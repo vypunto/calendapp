@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useApp } from '../store.jsx'
 import { CHANNELS, MONTHS, PUB_ESTADOS, WEEKDAYS, fmtLong, fmtShort, projectColor, sameDay, splitMedia, timeAgo } from '../lib/data.js'
-import { ReviewLinksModal } from './Review.jsx'
+import { pubRef } from '../lib/destinations.js'
+import { ReviewLinksModal, ReviewMark, refOf, useReviewMap } from './Review.jsx'
 import { ChannelTile, Cover, DemoBanner, Empty, Icon, Menu, Modal, PageHead, ProjectFilter, StatusBadge, Thumb, firstMedia, stateDot, useOutside, Select } from './ui.jsx'
 import { aggregateStatus, destLabel, destTime } from '../lib/destinations.js'
 import { CreateMenu } from './Sidebar.jsx'
@@ -148,6 +149,7 @@ function PostMenu({ menu, onClose }) {
 }
 
 function CalendarView() {
+  const reviews = useReviewMap()
   const app = useApp()
   const { year, month, filteredPublications: pubs, account } = app
   const [dayOpen, setDayOpen] = useState(null)
@@ -195,6 +197,7 @@ function CalendarView() {
                     <span className="ti">{o.pub.titulo || o.pub.proyecto}</span>
                     <span className="meta">{(o.dest?.canal || o.pub.canal) && <ChannelTile canal={o.dest?.canal || o.pub.canal} size={12} />}<span className="acct">{[o.hora, o.acc ? `@${o.acc.handle}` : o.pub.proyecto.toLowerCase()].filter(Boolean).join(' · ')}</span></span>
                   </span>
+                  <ReviewMark f={reviews.get(refOf(o.pub))} />
                   <i className="state-dot" style={{ '--dot': stateDot(o.label) }} title={o.label || 'Sin estado'} />
                 </button>
               ))}

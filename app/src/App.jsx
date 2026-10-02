@@ -11,6 +11,7 @@ import Library from './components/Library.jsx'
 import Stats from './components/Stats.jsx'
 import Settings from './components/Settings.jsx'
 import { Icon } from './components/ui.jsx'
+import Home from './components/Home.jsx'
 import Login from './components/Login.jsx'
 import ReviewPage, { reviewToken } from './components/Review.jsx'
 import mark from './assets/mark.svg'
@@ -28,6 +29,7 @@ function Screen() {
   const app = useApp()
   if (app.selectedPub) return <PublicationDetail key={app.selectedPub.id} />
   switch (app.view) {
+    case 'home': return <Home />
     case 'feed': return <VisualFeed />
     case 'requests': return <Requests />
     case 'projects': return <Projects />

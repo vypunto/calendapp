@@ -136,6 +136,7 @@ export default function Sidebar() {
 
       <div className="sidebar-scroll">
         <div className="nav-label"><span>CONTENIDO</span></div>
+        <NavItem icon="layers" label="Inicio" active={view === 'home'} onClick={() => app.setView('home')} />
         <NavItem icon="calendar" label="Calendario" active={view === 'calendar'} onClick={() => app.setView('calendar')} />
         <NavItem icon="list" label="Publicaciones" active={view === 'list'} onClick={() => app.setView('list')} />
         <NavItem icon="grid" label="Visual Feed" active={view === 'feed'} onClick={() => app.setView('feed')} />
@@ -172,8 +173,8 @@ export default function Sidebar() {
 export function MobileBar() {
   const app = useApp()
   const [more, setMore] = useState(false)
-  const items = [['calendar', 'calendar', 'Calendario'], ['list', 'list', 'Publicaciones'], ['feed', 'grid', 'Feed'], ['requests', 'inbox', 'Peticiones']]
-  const extra = [['projects', 'folder', 'Proyectos'], ['library', 'image', 'Biblioteca'], ['stats', 'chart', 'Estadísticas'], ...(app.isAuth ? [['settings', 'sliders', 'Ajustes']] : [])]
+  const items = [['home', 'layers', 'Inicio'], ['calendar', 'calendar', 'Calendario'], ['list', 'list', 'Publicaciones'], ['requests', 'inbox', 'Peticiones']]
+  const extra = [['feed', 'grid', 'Visual Feed'], ['projects', 'folder', 'Proyectos'], ['library', 'image', 'Biblioteca'], ['stats', 'chart', 'Estadísticas'], ...(app.isAuth ? [['settings', 'sliders', 'Ajustes']] : [])]
   return (
     <>
       {more && (

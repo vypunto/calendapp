@@ -31,10 +31,10 @@ function toDate(v) {
 }
 const dateIn2 = (list) => list.map((r, i) => ({ ...r, fecha: toDate(r.fecha), id: r.id || String(i) }))
 
-const VIEWS = ['calendar', 'list', 'feed', 'requests', 'projects', 'library', 'stats', 'settings']
+const VIEWS = ['home', 'calendar', 'list', 'feed', 'requests', 'projects', 'library', 'stats', 'settings']
 const viewFromHash = () => {
   const h = window.location.hash.replace('#/', '').split('?')[0]
-  return VIEWS.includes(h) ? h : 'calendar'
+  return VIEWS.includes(h) ? h : 'home'
 }
 
 export function AppProvider({ children }) {
@@ -186,7 +186,7 @@ export function AppProvider({ children }) {
         const fecha = /^\d{4}-\d{2}-\d{2}$/.test(day || '') ? new Date(`${day}T12:00:00`) : null
         const proyecto = projectById(sp.project_id)?.name
         if (!fecha || !proyecto) continue
-        extra.push({ id: `srv-${sp.ref}`, proyecto, fecha, titulo: sp.title, copy: sp.caption, media: (sp.media || []).join(', '), tipo: sp.tipo, canal: 'Instagram', estado: '', url_post: '', promocionado: 'No' })
+        extra.push({ id: `srv-${sp.ref}`, ref: sp.ref, proyecto, fecha, titulo: sp.title, copy: sp.caption, media: (sp.media || []).join(', '), tipo: sp.tipo, canal: 'Instagram', estado: '', url_post: '', promocionado: 'No' })
       }
     }
     return [...map.values(), ...extra].filter((p) => !removed.has(p.id)).map((p) => {

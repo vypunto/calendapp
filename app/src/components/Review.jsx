@@ -8,6 +8,7 @@ import { splitMedia } from '../lib/data.js'
 import { Cover, Icon, Modal, Select, tipoIcon } from './ui.jsx'
 import logo from '../assets/logo_nowepost.png'
 
+export const refOf = (p) => p.ref || pubRef(p)
 const pad = (n) => String(n).padStart(2, '0')
 const fmtDay = (d) => d.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })
 const linkUrl = (token) => `${window.location.origin}${window.location.pathname}#/review/${token}`
@@ -73,7 +74,7 @@ export function ReviewLinksModal({ onClose }) {
 // Respuestas del cliente en el detalle de una publicación.
 export function ReviewFeedback({ pub }) {
   const app = useApp()
-  const ref = pubRef(pub)
+  const ref = refOf(pub)
   const list = app.social.feedback.filter((f) => f.ref === ref)
   if (!list.length) return null
   return (
@@ -174,4 +175,18 @@ export default function ReviewPage({ token }) {
         </>}
     </div>
   )
+}
+
+// Última respuesta del cliente por publicación (para marcarla en el calendario y en Inicio).
+export function useReviewMap() {
+  const app = useApp()
+  return useMemo(() => {
+    const m = new Map()
+    app.social.feedback.forEach((f) => { const cur = m.get(f.ref); if (!cur || f.at > cur.at) m.set(f.ref, f) })
+    return m
+  }, [app.social.feedback])
+}
+export function ReviewMark({ f }) {
+  if (!f) return null
+  return <span className={`rv-mark ${f.decision}`} title={f.decision === 'approved' ? `Aprobada por ${f.author}` : `${f.author} pide cambios: ${f.comment}`}><Icon name={f.decision === 'approved' ? 'check' : 'message'} size={10} /></span>
 }
