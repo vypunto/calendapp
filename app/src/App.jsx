@@ -11,7 +11,9 @@ import Library from './components/Library.jsx'
 import Stats from './components/Stats.jsx'
 import Settings from './components/Settings.jsx'
 import { Icon } from './components/ui.jsx'
+import Home from './components/Home.jsx'
 import Login from './components/Login.jsx'
+import ReviewPage, { reviewToken } from './components/Review.jsx'
 import mark from './assets/mark.svg'
 
 function Toasts() {
@@ -27,6 +29,7 @@ function Screen() {
   const app = useApp()
   if (app.selectedPub) return <PublicationDetail key={app.selectedPub.id} />
   switch (app.view) {
+    case 'home': return <Home />
     case 'feed': return <VisualFeed />
     case 'requests': return <Requests />
     case 'projects': return <Projects />
@@ -57,6 +60,8 @@ function Shell() {
 // Acceso: con servidor disponible, nadie entra sin sesión. Sin servidor (solo hoja) o en la demo, se abre la app.
 function Gate() {
   const app = useApp()
+  const review = reviewToken()
+  if (review) return <ReviewPage token={review} />
   const { backend } = app.social
   if (app.demo) return <Shell />
   if (backend.state === 'unknown') return <div className="lg-splash"><img src={mark} alt="Cargando Nowepost" /></div>

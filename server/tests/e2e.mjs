@@ -50,7 +50,7 @@ try {
 
   R = await post('instagram/connect', { project_id: 'corfu' })
   const url = new URL(R.url); let state = url.searchParams.get('state')
-  ok('URL de autorización oficial con scopes y state', url.host.endsWith('instagram.com') && url.searchParams.get('scope') === 'instagram_business_basic,instagram_business_content_publish' && !!state)
+  ok('URL de autorización oficial con scopes y state', url.host.endsWith('instagram.com') && url.searchParams.get('scope') === 'instagram_business_basic,instagram_business_content_publish,instagram_business_manage_insights,instagram_business_manage_comments' && !!state)
   ok('state inválido rechazado', (await callback('code=corfu&state=badstate')).includes('ig=error'))
   ok('callback conecta la cuenta', (await callback(`code=corfu&state=${state}`)).includes('ig=connected'))
   ok('el state es de un solo uso', (await callback(`code=corfu&state=${state}`)).includes('ig=error'))
@@ -134,6 +134,36 @@ try {
   ok('historial del publicado incluye published', B.events.some((e) => e.channel_id === D1 && e.type === 'published'))
   R = await post('publications/delete', { ref: 'corfu|2026-09-29|img' }); ok('no se puede borrar una publicación ya publicada', R.ok === false && /Meta/.test(R.error.message))
   R = await post('publications/delete', { ref: 'corfu|2026-10-02|tz' }); ok('borrar publicación no publicada', R.ok === true)
+  // Estadísticas de publicaciones
+  ok('se pide el permiso de estadísticas', new URL((await post('instagram/connect', {})).url).searchParams.get('scope').includes('instagram_business_manage_insights'))
+  R = await post('insights/refresh'); const ins = R.insights?.find((i) => i.channel_id === D1)
+  ok('métricas del publicado guardadas', R.ok === true && ins && ins.metrics.reach > 0 && 'saved' in ins.metrics && !ins.error)
+  ok('bootstrap devuelve métricas', (await get('bootstrap')).insights.some((i) => i.channel_id === D1))
+  const calls = mock.state.insightCalls; await post('insights/refresh'); ok('no se repiten métricas recientes', mock.state.insightCalls === calls)
+  await query('UPDATE post_insights SET fetched_at = $1', ['2000-01-01T00:00:00Z']); mock.state.noInsightsPerm = true
+  R = await post('insights/refresh'); const ins2 = R.insights.find((i) => i.channel_id === D1)
+  ok('sin permiso: aviso de reconectar y se conservan las cifras', /reconectar|conectar/i.test(ins2.error || '') && ins2.metrics.reach === ins.metrics.reach)
+  ok('…y la cuenta sigue conectada', (await acct('teatrocorfu7')).status === 'connected'); mock.state.noInsightsPerm = false
+  // Primer comentario automático
+  R = await pub('corfu|2026-09-30|fc', { first_comment: '#uno #dos', destinations: [D(ACC)] })
+  R = await post('destinations/publish', { id: R.destinations[0].id })
+  ok('primer comentario publicado tras publicar', R.destination.status === 'published' && mock.state.comments?.some((c) => c.message === '#uno #dos'))
+  ok('bootstrap devuelve el primer comentario', (await get('bootstrap')).publications.some((p) => p.first_comment === '#uno #dos'))
+  // Plantillas y hashtags
+  R = await post('snippets/save', { kind: 'hashtags', name: 'Teatro', body: '#teatro #madrid', project_id: 'corfu' }); ok('guardar banco de hashtags', R.ok && R.snippets.length === 1)
+  R = await post('snippets/delete', { id: R.snippets[0].id }); ok('borrar banco de hashtags', R.ok && R.snippets.length === 0)
+  // Aprobación del cliente
+  R = await post('review/create', { project_id: 'corfu', date_from: '2026-09-28', date_to: '2026-10-04', label: 'Semana 40' }); const TK = R.token
+  ok('crear enlace de aprobación', R.ok && TK.length > 20)
+  const pubGet = async (route) => (await fetch(`${APP}/api/index?r=${route}`)).json()
+  R = await pubGet(`review/view&t=${TK}`); ok('el enlace se abre sin sesión', R.ok && R.link.date_from === '2026-09-28')
+  ok('enlace inventado → 404', (await pubGet('review/view&t=nope')).ok === false)
+  const fb = (body) => fetch(`${APP}/api/index?r=review/feedback`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CalendApp': '1' }, body: JSON.stringify({ t: TK, ...body }) }).then((r) => r.json())
+  ok('pedir cambios exige comentario', (await fb({ ref: 'corfu|2026-09-29|img', decision: 'changes' })).ok === false)
+  ok('publicación fuera del rango rechazada', (await fb({ ref: 'corfu|2026-11-01|x', decision: 'approved' })).ok === false)
+  R = await fb({ ref: 'corfu|2026-09-29|img', decision: 'changes', comment: 'Cambiad la foto', author: 'Ana' }); ok('el cliente pide cambios sin cuenta', R.ok && R.feedback.length === 1)
+  const B2 = await get('bootstrap')
+  ok('el equipo ve la respuesta y recibe aviso', B2.feedback.some((f) => f.comment === 'Cambiad la foto') && B2.notifications.some((n) => n.kind === 'review_changes'))
   ok('force_reauth en la URL de autorización', new URL((await post('instagram/connect', { force_reauth: true })).url).searchParams.get('force_reauth') === 'true')
   R = await post('accounts/check', { id: ACC }); ok('comprobar cuenta devuelve cuota real de Meta', R.quota?.total === 50)
   R = await post('accounts/refresh', { id: ACC }); ok('renovar token', R.ok === true)
@@ -143,6 +173,7 @@ try {
   R = await pub('corfu|2026-09-29|tok', { caption: 'x', destinations: [D(ACC)] })
   R = await post('destinations/publish', { id: R.destinations[0].id }); ok('token rechazado → destino en error', R.destination.status === 'failed')
   ok('…y la cuenta queda marcada como caducada', (await acct('teatrocorfu7')).status === 'expired')
+  ok('un fallo de publicación genera aviso', (await get('bootstrap')).notifications.some((n) => n.kind === 'failed'))
   mock.state.failAuth = false
   R = await post('accounts/disconnect', { id: ACC }); ok('desconectar cuenta', R.ok === true)
   const enc2 = (await query(`SELECT access_token_enc FROM social_accounts WHERE username = 'teatrocorfu7'`)).rows[0].access_token_enc

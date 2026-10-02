@@ -4,7 +4,7 @@
 export const MONTHS = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
 export const MONTHS_SHORT = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
 export const WEEKDAYS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
-const DAYS_LONG = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado']
+export const DAYS_LONG = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado']
 
 export const PUBLICATIONS_CSV =
   'https://docs.google.com/spreadsheets/d/e/2PACX-1vRajBUvB3OQ0d3aHcKWnz716xuj2i7_B6rGosEgLXQkeE5nvB1G737dWHVRKLSVsE3lIJ3CC28w1PF-/pub?gid=525718474&single=true&output=csv'

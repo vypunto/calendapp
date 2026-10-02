@@ -31,10 +31,10 @@ function toDate(v) {
 }
 const dateIn2 = (list) => list.map((r, i) => ({ ...r, fecha: toDate(r.fecha), id: r.id || String(i) }))
 
-const VIEWS = ['calendar', 'list', 'feed', 'requests', 'projects', 'library', 'stats', 'settings']
+const VIEWS = ['home', 'calendar', 'list', 'feed', 'requests', 'projects', 'library', 'stats', 'settings']
 const viewFromHash = () => {
   const h = window.location.hash.replace('#/', '').split('?')[0]
-  return VIEWS.includes(h) ? h : 'calendar'
+  return VIEWS.includes(h) ? h : 'home'
 }
 
 export function AppProvider({ children }) {
@@ -186,14 +186,15 @@ export function AppProvider({ children }) {
         const fecha = /^\d{4}-\d{2}-\d{2}$/.test(day || '') ? new Date(`${day}T12:00:00`) : null
         const proyecto = projectById(sp.project_id)?.name
         if (!fecha || !proyecto) continue
-        extra.push({ id: `srv-${sp.ref}`, proyecto, fecha, titulo: sp.title, copy: sp.caption, media: (sp.media || []).join(', '), tipo: sp.tipo, canal: 'Instagram', estado: '', url_post: '', promocionado: 'No' })
+        extra.push({ id: `srv-${sp.ref}`, ref: sp.ref, proyecto, fecha, titulo: sp.title, copy: sp.caption, media: (sp.media || []).join(', '), tipo: sp.tipo, canal: 'Instagram', estado: '', url_post: '', promocionado: 'No' })
       }
     }
     return [...map.values(), ...extra].filter((p) => !removed.has(p.id)).map((p) => {
       // Fuera de la demo, el estado real de los destinos lo manda el servidor; el snapshot local solo sirve hasta la primera sincronización.
       const dests = demo ? p.destinos : (social.destinationsByRef.get(pubRef(p)) ?? p.destinos)
       const sp = demo ? null : social.serverPubs.length ? social.serverPubsByRef.get(pubRef(p)) : null
-      const withD = withDestinations(sp && p.image_ratio === undefined ? { ...p, image_ratio: sp.image_ratio || 'original', image_fit: sp.image_fit || 'fit' } : p, dests)
+      const withSp = sp && p.image_ratio === undefined ? { ...p, image_ratio: sp.image_ratio || 'original', image_fit: sp.image_fit || 'fit' } : p
+      const withD = withDestinations(sp && withSp.first_comment === undefined ? { ...withSp, first_comment: sp.first_comment || '' } : withSp, dests)
       return withD.destinos?.length ? { ...withD, estado: statusToEstado(aggregateStatus(withD.destinos)) } : withD
     })
   }, [demo, pubs, overrides, removed, social.destinationsByRef, social.serverPubs, social.serverPubsByRef])
@@ -229,7 +230,7 @@ export function AppProvider({ children }) {
     const ref = pubRef(pub)
     return social.savePublicationDestinations({
       ref, previous_ref: previousRef && previousRef !== ref ? previousRef : null, project_id: resolveProject(pub.proyecto)?.id,
-      title: pub.titulo, caption: pub.copy || '', media: splitMedia(pub.media), tipo: pub.tipo || 'imagen', image_ratio: pub.image_ratio || 'original', image_fit: pub.image_fit || 'fit',
+      title: pub.titulo, caption: pub.copy || '', media: splitMedia(pub.media), tipo: pub.tipo || 'imagen', image_ratio: pub.image_ratio || 'original', image_fit: pub.image_fit || 'fit', first_comment: pub.first_comment || '',
       destinations: dests.map((d) => ({ social_account_id: Number(d.accountId), status: d.status, scheduled_at: d.scheduledAt ? d.scheduledAt.toISOString() : null, timezone: d.timezone || undefined })),
     })
   }, [demo, social])

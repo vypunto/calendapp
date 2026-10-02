@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useApp } from '../store.jsx'
 import { PUBLICATIONS_CSV, REQUESTS_CSV, SCRIPT_URL, fmtFull, fmtShort, isPendingRequest, splitMedia, timeAgo } from '../lib/data.js'
 import { lsSet } from '../lib/storage.js'
@@ -25,6 +25,31 @@ const Row = ({ icon, title, sub, children }) => (
     {children}
   </div>
 )
+
+// ── Avisos: fallos, vencidas, cuentas sin conexión y respuestas de clientes ──
+const KIND_ICON = { failed: 'info', overdue: 'clock', at_risk: 'link', token: 'lock', review_ok: 'check', review_changes: 'message' }
+export const SEEN_KEY = 'nw_alerts_seen'
+function AlertsGroup() {
+  const app = useApp()
+  const { notifications, testEmail, backend, busy } = app.social
+  const email = !!backend.configured?.email
+  useEffect(() => { try { localStorage.setItem(SEEN_KEY, new Date().toISOString()) } catch { /* sin almacenamiento */ } window.dispatchEvent(new Event('nw-alerts-seen')) }, [notifications])
+  return (
+    <Group title="Avisos" sub="Te avisamos cuando una publicación falla, se queda sin publicar, una cuenta se desconecta o un cliente responde.">
+      <Row icon={<Icon name="bell" size={18} />} title={email ? 'Avisos por email activados' : 'Avisos por email desactivados'}
+        sub={email ? 'Se envían a los usuarios del equipo (o a NOTIFY_TO si está definido).' : 'Añade RESEND_API_KEY y NOTIFY_FROM en Vercel para recibirlos por email. Mientras tanto aparecen aquí.'}>
+        {email && <button className="btn btn-sm" disabled={busy} onClick={testEmail}>Enviar prueba</button>}
+      </Row>
+      {notifications.length === 0 ? <Row title="Sin avisos" sub="Todo en orden por ahora." /> : notifications.slice(0, 25).map((n) => (
+        <button key={n.key} className="row-item" style={{ width: '100%', textAlign: 'left' }} onClick={() => { const v = (n.link || '').replace('#/', ''); if (v) app.setView(v.startsWith('settings') ? 'settings' : v) }}>
+          <span className={`alert-ico k-${n.kind}`}><Icon name={KIND_ICON[n.kind] || 'bell'} size={15} /></span>
+          <div className="grow"><b className="trunc">{n.title}</b><small>{n.message}</small></div>
+          <small className="muted" style={{ whiteSpace: 'nowrap' }}>{new Date(n.at).toLocaleString('es-ES', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}{n.emailed ? ' · ✉' : ''}</small>
+        </button>
+      ))}
+    </Group>
+  )
+}
 
 // ── Programador: ¿se está ejecutando el cron que publica lo programado? ────
 function SchedulerRow() {
@@ -284,6 +309,7 @@ export default function Settings() {
           </>
         )}
 
+        {tab === 'notificaciones' && <AlertsGroup />}
         {tab === 'notificaciones' && (
           <Group title="Pendiente de revisar" sub="Peticiones que esperan una decisión del equipo.">
             {pending.length === 0 ? <Row title="No hay peticiones pendientes" /> : pending.map((r) => (

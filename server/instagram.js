@@ -4,7 +4,7 @@ import * as cfg from './config.js'
 import { request } from './http.js'
 import { MetaException } from './meta-exception.js'
 
-export const SCOPES = 'instagram_business_basic,instagram_business_content_publish'
+export const SCOPES = 'instagram_business_basic,instagram_business_content_publish,instagram_business_manage_insights,instagram_business_manage_comments'
 const v = (path) => `${cfg.graphBase()}/${cfg.graphVersion()}/${path.replace(/^\/+/, '')}`
 
 async function call(method, url, params) {
@@ -75,4 +75,30 @@ export async function quota(igId, token) {
 
 export async function permalink(mediaId, token) {
   try { return (await call('GET', v(mediaId), { fields: 'permalink', access_token: token })).permalink ?? null } catch (e) { if (e instanceof MetaException) return null; throw e }
+}
+
+// Métricas de una publicación (requiere instagram_business_manage_insights). Cada formato admite métricas distintas;
+// si Meta rechaza alguna (cambian entre versiones), se reintenta con el conjunto básico.
+const METRICS = {
+  historia: 'reach,views,replies,shares,total_interactions',
+  reel: 'reach,views,likes,comments,saved,shares,total_interactions,ig_reels_avg_watch_time',
+  default: 'reach,views,likes,comments,saved,shares,total_interactions',
+}
+const BASIC = 'reach,likes,comments,saved,shares'
+const readInsights = (j) => Object.fromEntries((j?.data || []).map((d) => [d.name, Number(d.total_value?.value ?? d.values?.[0]?.value ?? 0)]))
+
+export async function mediaInsights(mediaId, token, tipo) {
+  const metric = METRICS[tipo] || METRICS.default
+  try {
+    return readInsights(await call('GET', v(`${mediaId}/insights`), { metric, access_token: token }))
+  } catch (e) {
+    if (!(e instanceof MetaException) || e.isAuthError() || e.isPermissionError?.() || tipo === 'historia') throw e
+    return readInsights(await call('GET', v(`${mediaId}/insights`), { metric: BASIC, access_token: token }))
+  }
+}
+
+// Comentario en una publicación propia (requiere instagram_business_manage_comments).
+export async function comment(mediaId, token, message) {
+  const j = await call('POST', v(`${mediaId}/comments`), { message, access_token: token })
+  return String(j.id ?? '')
 }

@@ -5,6 +5,7 @@ import * as Media from './media.js'
 import * as Platforms from './platforms.js'
 import { MetaException } from './meta-exception.js'
 import { now } from './db.js'
+import { notify } from './notify.js'
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 
@@ -13,7 +14,9 @@ async function fail(channelId, message, account = null, e = null) {
   await Repo.updateChannel(channelId, { status: 'failed', error_message: msg, locked_at: null })
   await Repo.logEvent(channelId, 'failed', msg)
   if (account && e && e.isAuthError()) await Repo.updateAccount(account.id, { status: 'expired', last_error: e.userMessage().slice(0, 300) })
-  return Repo.channelPublic((await Repo.channel(channelId)) ?? {})
+  const ch = await Repo.channel(channelId)
+  if (ch) await notify(`failed:${channelId}:${ch.attempts}`, 'failed', `No se pudo publicar «${ch.title || 'sin título'}»${account ? ` en @${account.username}` : ''}`, msg, '#/calendar')
+  return Repo.channelPublic(ch ?? {})
 }
 
 export async function run(channelId, req, maxWait = 60) {
@@ -44,6 +47,14 @@ export async function run(channelId, req, maxWait = 60) {
     const mediaId = await Instagram.publish(ig, token, creation)
     await Repo.updateChannel(channelId, { status: 'published', published_at: now(), external_post_id: mediaId, external_url: await Instagram.permalink(mediaId, token), error_message: null, locked_at: null })
     await Repo.logEvent(channelId, 'published', `Publicado en @${account.username}`)
+    // Primer comentario: si falla, la publicación sigue siendo válida; queda en el historial.
+    const first = String(ch.first_comment ?? '').trim()
+    if (first) {
+      try { await Instagram.comment(mediaId, token, first); await Repo.logEvent(channelId, 'comment', 'Primer comentario publicado') } catch (e) {
+        const m = e instanceof MetaException ? e.userMessage() : e.message
+        await Repo.logEvent(channelId, 'comment_failed', `No se pudo publicar el primer comentario: ${m}`.slice(0, 500))
+      }
+    }
     return Repo.channelPublic((await Repo.channel(channelId)) ?? {})
   } catch (e) {
     return fail(channelId, e instanceof MetaException ? e.userMessage() : e.message, account, e instanceof MetaException ? e : null)

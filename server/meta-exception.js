@@ -17,6 +17,9 @@ export class MetaException extends Error {
   // El token ya no sirve y hay que volver a conectar la cuenta.
   isAuthError() { return this.type === 'OAuthException' || this.metaCode === 190 }
 
+  // Falta un permiso concedido (p. ej. la cuenta se conectó antes de pedir estadísticas).
+  isPermissionError() { return this.metaCode === 10 || (this.metaCode >= 200 && this.metaCode < 300) }
+
   // Mensaje pensado para la persona que usa CalendApp (códigos de la documentación oficial de Meta).
   userMessage() {
     const bySub = {
