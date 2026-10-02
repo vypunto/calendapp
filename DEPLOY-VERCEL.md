@@ -12,6 +12,7 @@ El backend PHP de `api/` (`*.php`) se conserva como referencia para hosting con 
 2. En *Settings → Environment Variables* define (ver `.env.example`):
    `DATABASE_URL`, `APP_KEY`, `ADMIN_PASSWORD`, `CRON_SECRET`, `META_APP_ID`, `META_APP_SECRET`, `META_REDIRECT_URI`, `APP_URL`.
    Además, `INITIAL_TEAM_PASSWORD`: contraseña inicial de los usuarios del equipo (v.santiago, m.guerrero y n.romo @grupoelchandrio.com). Solo se usa la primera vez que se crea cada usuario; cada uno debe cambiarla en su primer acceso. Tras el primer despliegue se puede borrar.
+   Avisos por email (opcional): `RESEND_API_KEY` (cuenta en resend.com), `NOTIFY_FROM` (remitente de un dominio verificado en Resend, p. ej. `Nowepost <avisos@tudominio.com>`) y `NOTIFY_TO` (lista separada por comas; si no se define, se avisa a los usuarios del equipo).
 3. Despliega. Abre `https://TU-DOMINIO/api/index?r=status`: cada bandera de `configured` debe estar en `true`.
 
 ## 3. App de Meta

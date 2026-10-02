@@ -57,6 +57,11 @@ export async function startMock(port) {
       return out({ id })
     }
     if (p.match(/^\/v25\.0\/(\d+)\/content_publishing_limit$/)) return out({ data: [{ quota_usage: st.published.length, config: { quota_total: 50, quota_duration: 86400 } }] })
+    if ((m = p.match(/^\/v25\.0\/M(\d+)\/comments$/)) && req.method === 'POST') {
+      if (!form.message) return out({ error: { message: 'Missing message', type: 'OAuthException', code: 100 } }, 400)
+      st.comments = [...(st.comments || []), { media: `M${m[1]}`, message: form.message }]
+      return out({ id: `CM${st.comments.length}` })
+    }
     if ((m = p.match(/^\/v25\.0\/M(\d+)\/insights$/))) {
       if (st.noInsightsPerm) return out({ error: { message: '(#10) Application does not have permission for this action', type: 'OAuthException', code: 10 } }, 400)
       const metric = url.searchParams.get('metric') || ''

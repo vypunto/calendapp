@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useApp } from '../store.jsx'
 import { CHANNELS, MONTHS, PUB_ESTADOS, WEEKDAYS, fmtLong, fmtShort, projectColor, sameDay, splitMedia, timeAgo } from '../lib/data.js'
+import { ReviewLinksModal } from './Review.jsx'
 import { ChannelTile, Cover, DemoBanner, Empty, Icon, Menu, Modal, PageHead, ProjectFilter, StatusBadge, Thumb, firstMedia, stateDot, useOutside, Select } from './ui.jsx'
 import { aggregateStatus, destLabel, destTime } from '../lib/destinations.js'
 import { CreateMenu } from './Sidebar.jsx'
@@ -296,12 +297,15 @@ export default function PubViews() {
   const { view } = app
   const searching = app.search.trim().length >= 2
   const monthly = !searching
+  const [reviewOpen, setReviewOpen] = useState(false)
   return (
     <div className="view-enter" key={view}>
       <PageHead title={TITLES[view]} subtitle={SUBTITLES[view]}>
         <button className="btn btn-icon" onClick={() => app.loadPublications(true)} title={app.lastSynced ? `Sincronizado ${timeAgo(app.lastSynced)}` : 'Sincronizar'} aria-label="Sincronizar"><Icon name="refresh" size={15} className={app.loading ? 'spin' : ''} /></button>
+        {app.isAuth && !app.demo && app.social.backend.state === 'online' && <button className="btn" onClick={() => setReviewOpen(true)} title="Enlace para que el cliente apruebe las piezas"><Icon name="users" size={15} /> <span className="hide-sm">Aprobación cliente</span></button>}
         <CreateMenu />
       </PageHead>
+      {reviewOpen && <ReviewLinksModal onClose={() => setReviewOpen(false)} />}
       <DemoBanner />
       <ErrorBanner />
       <div className="toolbar split-ends" style={{ marginBottom: 12 }}>

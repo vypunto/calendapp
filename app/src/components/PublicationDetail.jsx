@@ -1,3 +1,4 @@
+import { ReviewFeedback } from './Review.jsx'
 import { useEffect, useMemo, useState } from 'react'
 import { useApp } from '../store.jsx'
 import { fmtFull, fmtLong, hashtagsOf, isVideoUrl, splitMedia, thumbOf } from '../lib/data.js'
@@ -173,6 +174,8 @@ export default function PublicationDetail() {
             </div>
           )}
 
+          <ReviewFeedback pub={pub} />
+
           <div className="pd-card">
             <h3>Contenido</h3>
             <div className="pd-text">
@@ -180,6 +183,7 @@ export default function PublicationDetail() {
               {pub.copy ? <p>{pub.copy}</p> : <p className="muted">Sin texto.</p>}
               {tags.length > 0 && <div className="pd-tags">{tags.map((t) => <span key={t} className="tag">{t}</span>)}</div>}
             </div>
+            {pub.first_comment && <div className="pd-text" style={{ marginTop: 12 }}><small>Primer comentario</small><p>{pub.first_comment}</p></div>}
           </div>
 
           <div className="pd-card">

@@ -30,4 +30,5 @@ export const flags = () => ({
   crypto: appKey() !== null,
   admin: get('ADMIN_PASSWORD') !== '',
   cron: get('CRON_SECRET') !== '',
+  email: get('RESEND_API_KEY') !== '' && get('NOTIFY_FROM') !== '',
 })

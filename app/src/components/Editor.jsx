@@ -7,6 +7,7 @@ import { TIMEZONES, combineDateTime, defaultTz, destLabel, destTime, pubRef } fr
 import { AccountStatusBadge, Select } from './ui.jsx'
 import { prettyProject } from '../lib/projects.js'
 import { ChannelTile, Cover, Icon, Modal, ProjectAvatar, StatusBadge, tipoIcon } from './ui.jsx'
+import { BestTimeHint, FirstComment, SnippetMenu } from './EditorExtras.jsx'
 
 // ── Subida de archivos (misma lógica que el original) ─────────────────────
 export function useUploader(scriptUrl, onUrl) {
@@ -225,7 +226,7 @@ function DestinationPicker({ app, project, selected, setSelected, existing, disa
 }
 
 // ── Editor ────────────────────────────────────────────────────────────────
-const EMPTY = { proyecto: '', fecha: '', titulo: '', copy: '', media: '', tipo: 'imagen', canal: 'Instagram', estado: 'Programado', url_post: '', promocionado: false, presupuesto: '', image_ratio: 'original', image_fit: 'fit' }
+const EMPTY = { first_comment: '', proyecto: '', fecha: '', titulo: '', copy: '', media: '', tipo: 'imagen', canal: 'Instagram', estado: 'Programado', url_post: '', promocionado: false, presupuesto: '', image_ratio: 'original', image_fit: 'fit' }
 
 // La hoja puede traer el canal vacío o en minúsculas: se normaliza para que no se confunda con un canal sin integración.
 const normCanal = (c) => (!c || String(c).trim().toLowerCase() === 'instagram' ? 'Instagram' : c)
@@ -243,7 +244,7 @@ export default function Editor() {
       proyecto: pub.proyecto || '', fecha: toInputDate(pub.fecha), titulo: pub.titulo || '', copy: pub.copy || '', media: pub.media || '',
       tipo: pub.tipo || 'imagen', canal: normCanal(pub.canal), estado: isDup ? '' : pub.estado || '', url_post: pub.url_post || '',
       promocionado: (pub.promocionado || 'No').toLowerCase().startsWith('s'), presupuesto: pub.presupuesto || '',
-      image_ratio: pub.image_ratio || 'original', image_fit: pub.image_fit || 'fit',
+      image_ratio: pub.image_ratio || 'original', image_fit: pub.image_fit || 'fit', first_comment: pub.first_comment || '',
     })
   const [selected, setSelected] = useState(() => new Set((pub?.destinos || []).filter((d) => d.status !== 'cancelled').map((d) => d.accountId)))
   const [touched, setTouched] = useState(false)
@@ -373,12 +374,21 @@ export default function Editor() {
                 <div className="chip-group">{TIPOS.map((t) => <button type="button" key={t} className={`chip ${form.tipo === t ? 'on' : ''}`} aria-pressed={form.tipo === t} onClick={() => set('tipo', t)} style={{ textTransform: 'capitalize' }}><Icon name={tipoIcon[t]} size={13} />{t}</button>)}</div>
               </div>
               <div className="field">
-                <label htmlFor="e-copy">Contenido</label>
+                <div className="label-row">
+                  <label htmlFor="e-copy">Contenido</label>
+                  <div className="label-tools">
+                    <SnippetMenu kind="template" project={form.proyecto} current={form.copy} onInsert={(t) => set('copy', form.copy.trim() ? `${form.copy.trimEnd()}\n\n${t}` : t)} />
+                    <SnippetMenu kind="hashtags" project={form.proyecto} current={`${form.copy} ${form.first_comment}`} onInsert={(t) => set('copy', `${form.copy.trimEnd()}${form.copy.trim() ? '\n\n' : ''}${t}`)} />
+                  </div>
+                </div>
                 <div className="copy-wrap">
                   <textarea id="e-copy" value={form.copy} onChange={(e) => set('copy', e.target.value)} placeholder="Escribe el texto de la publicación…" />
-                  <div className="copy-foot"><span>Puedes usar #hashtags y emojis</span><span>{form.copy.length} caracteres</span></div>
+                  <div className="copy-foot"><span>Puedes usar #hashtags y emojis</span><span className={form.copy.length > 2200 ? 'over' : ''}>{form.copy.length}/2.200</span></div>
                 </div>
               </div>
+              {form.canal === 'Instagram' && form.tipo !== 'historia' && form.tipo !== 'texto' && (
+                <FirstComment value={form.first_comment} onChange={(v) => set('first_comment', v)} copy={form.copy} setCopy={(v) => set('copy', v)} />
+              )}
             </div>
 
             <div className="form-section">
@@ -419,6 +429,7 @@ export default function Editor() {
                   <div className="field"><label htmlFor="e-url">URL de la publicación</label><input id="e-url" className="input" value={form.url_post} onChange={(e) => set('url_post', e.target.value)} placeholder="https://…" /></div>
                 </div>
               )}
+              {usesDestinations && <BestTimeHint project={form.proyecto} fecha={form.fecha} onPick={(d, t) => { set('fecha', d); setHora(t) }} />}
               {usesDestinations && <p className="muted" style={{ margin: 0, fontSize: 12 }}>El servidor publica a la hora indicada en {tz.replace('_', ' ')}, aunque el navegador esté cerrado. La hoja no guarda horas.</p>}
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 <button type="button" className={`switch ${form.promocionado ? 'on' : ''}`} onClick={() => set('promocionado', !form.promocionado)} role="switch" aria-checked={form.promocionado} aria-label="Campaña de Ads" />

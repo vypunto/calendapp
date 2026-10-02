@@ -6,12 +6,12 @@ export class ApiError extends Error {
 
 const ENDPOINT = 'api/index'
 
-export async function api(route, { method = 'GET', body, timeout = 20000 } = {}) {
+export async function api(route, { method = 'GET', body, timeout = 20000, query } = {}) {
   const ctl = new AbortController()
   const t = setTimeout(() => ctl.abort(), timeout)
   let res
   try {
-    res = await fetch(`${ENDPOINT}?r=${encodeURIComponent(route)}`, {
+    res = await fetch(`${ENDPOINT}?r=${encodeURIComponent(route)}${query ? `&${new URLSearchParams(query)}` : ''}`, {
       method, credentials: 'same-origin', signal: ctl.signal,
       headers: method === 'GET' ? {} : { 'Content-Type': 'application/json', 'X-CalendApp': '1' },
       body: body === undefined ? undefined : JSON.stringify(body),

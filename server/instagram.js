@@ -4,7 +4,7 @@ import * as cfg from './config.js'
 import { request } from './http.js'
 import { MetaException } from './meta-exception.js'
 
-export const SCOPES = 'instagram_business_basic,instagram_business_content_publish,instagram_business_manage_insights'
+export const SCOPES = 'instagram_business_basic,instagram_business_content_publish,instagram_business_manage_insights,instagram_business_manage_comments'
 const v = (path) => `${cfg.graphBase()}/${cfg.graphVersion()}/${path.replace(/^\/+/, '')}`
 
 async function call(method, url, params) {
@@ -95,4 +95,10 @@ export async function mediaInsights(mediaId, token, tipo) {
     if (!(e instanceof MetaException) || e.isAuthError() || e.isPermissionError?.() || tipo === 'historia') throw e
     return readInsights(await call('GET', v(`${mediaId}/insights`), { metric: BASIC, access_token: token }))
   }
+}
+
+// Comentario en una publicación propia (requiere instagram_business_manage_comments).
+export async function comment(mediaId, token, message) {
+  const j = await call('POST', v(`${mediaId}/comments`), { message, access_token: token })
+  return String(j.id ?? '')
 }

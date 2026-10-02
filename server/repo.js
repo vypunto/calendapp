@@ -2,6 +2,8 @@
 import { query, tx as withTx, now, isoAfter } from './db.js'
 import * as cryptoBox from './crypto.js'
 
+import crypto from 'node:crypto'
+
 const one = async (q, text, params) => (await q(text, params)).rows[0] ?? null
 const jsonOr = (s, fallback) => { try { return JSON.parse(s || '') ?? fallback } catch { return fallback } }
 
@@ -47,16 +49,16 @@ export function token(acc) {
 }
 
 // ── Publicaciones y destinos ────────────────────────────────────────────
-export async function upsertPublication(q, ref, previousRef, projectId, title, caption, media, tipo, ratio = null, fit = null) {
+export async function upsertPublication(q, ref, previousRef, projectId, title, caption, media, tipo, ratio = null, fit = null, firstComment = null) {
   const t = now()
   let row = await one(q, 'SELECT id FROM publications WHERE ref = $1', [ref])
   if (!row && previousRef) row = await one(q, 'SELECT id FROM publications WHERE ref = $1', [previousRef])
   const mediaJson = JSON.stringify(media)
   if (row) {
-    await q('UPDATE publications SET ref = $1, project_id = $2, title = $3, caption = $4, media = $5, tipo = $6, image_ratio = $7, image_fit = $8, updated_at = $9 WHERE id = $10', [ref, projectId, title, caption, mediaJson, tipo, ratio, fit, t, row.id])
+    await q('UPDATE publications SET ref = $1, project_id = $2, title = $3, caption = $4, media = $5, tipo = $6, image_ratio = $7, image_fit = $8, updated_at = $9, first_comment = $11 WHERE id = $10', [ref, projectId, title, caption, mediaJson, tipo, ratio, fit, t, row.id, firstComment])
     return Number(row.id)
   }
-  const r = await one(q, 'INSERT INTO publications (ref, project_id, title, caption, media, tipo, image_ratio, image_fit, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $9) RETURNING id', [ref, projectId, title, caption, mediaJson, tipo, ratio, fit, t])
+  const r = await one(q, 'INSERT INTO publications (ref, project_id, title, caption, media, tipo, image_ratio, image_fit, created_at, updated_at, first_comment) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $9, $10) RETURNING id', [ref, projectId, title, caption, mediaJson, tipo, ratio, fit, t, firstComment])
   return Number(r.id)
 }
 
@@ -115,8 +117,8 @@ export const channelPublic = (r) => ({
 })
 
 // Contenido guardado en el servidor: permite mostrar publicaciones aunque la hoja no las tenga.
-export const publications = async () => (await query('SELECT ref, project_id, title, caption, tipo, media, image_ratio, image_fit FROM publications ORDER BY id')).rows
-  .map((r) => ({ ref: r.ref, project_id: r.project_id, title: r.title, caption: r.caption, tipo: r.tipo, media: jsonOr(r.media, []), image_ratio: r.image_ratio, image_fit: r.image_fit }))
+export const publications = async () => (await query('SELECT ref, project_id, title, caption, tipo, media, image_ratio, image_fit, first_comment FROM publications ORDER BY id')).rows
+  .map((r) => ({ ref: r.ref, project_id: r.project_id, title: r.title, caption: r.caption, tipo: r.tipo, media: jsonOr(r.media, []), image_ratio: r.image_ratio, image_fit: r.image_fit, first_comment: r.first_comment || '' }))
 
 export async function channels(publicationId = null, q = query) {
   const rows = publicationId
@@ -125,7 +127,7 @@ export async function channels(publicationId = null, q = query) {
   return rows.map(channelPublic)
 }
 
-export const channel = (id) => one(query, 'SELECT c.*, p.ref, p.title, p.caption, p.media, p.tipo, p.project_id, p.image_ratio, p.image_fit FROM publication_channels c JOIN publications p ON p.id = c.publication_id WHERE c.id = $1', [Number(id) || 0])
+export const channel = (id) => one(query, 'SELECT c.*, p.ref, p.title, p.caption, p.media, p.tipo, p.project_id, p.image_ratio, p.image_fit, p.first_comment FROM publication_channels c JOIN publications p ON p.id = c.publication_id WHERE c.id = $1', [Number(id) || 0])
 
 // Reserva atómica: evita que dos procesos publiquen el mismo destino.
 export async function claim(id, resume = false) {
@@ -179,3 +181,43 @@ export const insights = async () => (await query(
      FROM post_insights i JOIN publication_channels c ON c.id = i.channel_id JOIN publications p ON p.id = c.publication_id ORDER BY c.published_at DESC`)).rows
   .map((r) => ({ channel_id: Number(r.channel_id), social_account_id: Number(r.social_account_id), ref: r.ref, title: r.title, tipo: r.tipo, project_id: r.project_id,
     published_at: r.published_at, external_url: r.external_url, metrics: jsonOr(r.metrics, {}), error: r.error, fetched_at: r.fetched_at }))
+
+// ── Avisos del scheduler ──────────────────────────────────────────────────
+// Programadas que deberían haber salido hace más de `graceMin` minutos y siguen sin publicarse.
+export const overdueChannels = async (graceMin = 15) => (await query(
+  `SELECT c.id, c.scheduled_at, p.title, a.username FROM publication_channels c JOIN publications p ON p.id = c.publication_id
+     LEFT JOIN social_accounts a ON a.id = c.social_account_id WHERE c.status IN ('scheduled','publishing') AND c.scheduled_at < $1`, [isoAfter(-graceMin * 60)])).rows
+// Programadas en las próximas `hours` horas cuya cuenta no está conectada (fallarán si nadie la reconecta).
+export const atRiskChannels = async (hours = 24) => (await query(
+  `SELECT c.id, c.scheduled_at, p.title, a.username, a.status, a.token_expires_at FROM publication_channels c JOIN publications p ON p.id = c.publication_id
+     JOIN social_accounts a ON a.id = c.social_account_id WHERE c.status = 'scheduled' AND c.scheduled_at BETWEEN $1 AND $2`, [now(), isoAfter(hours * 3600)])).rows
+  .filter((r) => accountPublic(r).status !== 'connected')
+
+// ── Plantillas y bancos de hashtags ───────────────────────────────────────
+export const snippets = async () => (await query('SELECT id, project_id, kind, name, body FROM snippets ORDER BY kind, name')).rows.map((r) => ({ ...r, id: Number(r.id) }))
+export async function saveSnippet({ id, project_id, kind, name, body }) {
+  if (id) { await query('UPDATE snippets SET project_id = $1, kind = $2, name = $3, body = $4 WHERE id = $5', [project_id, kind, name, body, id]); return Number(id) }
+  return Number((await one(query, 'INSERT INTO snippets (project_id, kind, name, body, created_at) VALUES ($1, $2, $3, $4, $5) RETURNING id', [project_id, kind, name, body, now()])).id)
+}
+export const deleteSnippet = (id) => query('DELETE FROM snippets WHERE id = $1', [Number(id) || 0])
+
+// ── Enlaces de aprobación para clientes ───────────────────────────────────
+export async function createReviewLink({ project_id, label, date_from, date_to, created_by, days = 30 }) {
+  const token = crypto.randomBytes(18).toString('base64url')
+  await query('INSERT INTO review_links (token, project_id, label, date_from, date_to, created_by, created_at, expires_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
+    [token, project_id, label, date_from, date_to, created_by, now(), isoAfter(days * 86400)])
+  return token
+}
+export const reviewLink = async (token) => {
+  const r = await one(query, 'SELECT * FROM review_links WHERE token = $1', [String(token || '')])
+  return r && r.expires_at > now() ? r : null
+}
+export const reviewLinks = async () => (await query(
+  `SELECT l.*, (SELECT COUNT(*)::int FROM review_feedback f WHERE f.token = l.token) AS feedback FROM review_links l WHERE l.expires_at > $1 ORDER BY l.created_at DESC LIMIT 30`, [now()])).rows
+export const deleteReviewLink = (token) => query('DELETE FROM review_links WHERE token = $1', [String(token || '')])
+export async function addFeedback(token, ref, decision, comment, author) {
+  return Number((await one(query, 'INSERT INTO review_feedback (token, ref, decision, comment, author, at) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id', [token, ref, decision, comment, author, now()])).id)
+}
+export const feedbackFor = async (token) => (await query('SELECT id, ref, decision, comment, author, at FROM review_feedback WHERE token = $1 ORDER BY at', [token])).rows.map((r) => ({ ...r, id: Number(r.id) }))
+export const allFeedback = async () => (await query(
+  `SELECT f.id, f.ref, f.decision, f.comment, f.author, f.at, l.label, l.project_id FROM review_feedback f JOIN review_links l ON l.token = f.token ORDER BY f.at DESC LIMIT 500`)).rows.map((r) => ({ ...r, id: Number(r.id) }))

@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useApp } from '../store.jsx'
 import { projectColor } from '../lib/data.js'
 import { prettyProject } from '../lib/projects.js'
@@ -117,6 +117,10 @@ export default function Sidebar() {
   app.publications.forEach((p) => { counts[p.proyecto] = (counts[p.proyecto] || 0) + 1 })
   const projects = app.projectNames.filter((p) => app.matchesAccount(p))
   const shown = projects.slice(0, MAX_PROJECTS)
+  const [, bump] = useState(0)
+  useEffect(() => { const h = () => bump((n) => n + 1); window.addEventListener('nw-alerts-seen', h); return () => window.removeEventListener('nw-alerts-seen', h) }, [])
+  const seen = (() => { try { return localStorage.getItem('nw_alerts_seen') || '' } catch { return '' } })()
+  const unseen = app.social.notifications.filter((n) => n.at > seen).length
   const toggleProject = (p) => {
     app.setProjectsFilter(app.projectsFilter.length === 1 && app.projectsFilter[0] === p ? [] : [p])
     if (!['calendar', 'list', 'feed'].includes(view)) app.setView('calendar')
@@ -157,7 +161,8 @@ export default function Sidebar() {
         <div className="nav-label"><span>ESPACIO DE TRABAJO</span></div>
         <NavItem icon="image" label="Biblioteca" active={view === 'library'} onClick={() => app.setView('library')} />
         <NavItem icon="chart" label="Estadísticas" active={view === 'stats'} onClick={() => app.setView('stats')} />
-        {app.isAuth && <NavItem icon="sliders" label="Ajustes" active={view === 'settings'} onClick={() => app.setView('settings')} />}
+        {app.isAuth && !app.demo && <NavItem icon="bell" label="Avisos" count={unseen || undefined} active={view === 'settings' && app.settingsTab === 'notificaciones'} onClick={() => { app.setSettingsTab('notificaciones'); app.setView('settings') }} />}
+        {app.isAuth && <NavItem icon="sliders" label="Ajustes" active={view === 'settings' && app.settingsTab !== 'notificaciones'} onClick={() => app.setView('settings')} />}
       </div>
       <UserMenu />
     </aside>

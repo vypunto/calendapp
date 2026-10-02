@@ -59,6 +59,10 @@ export function useSocial({ demo, toast }) {
   const [platforms, setPlatforms] = useState(PLATFORMS_FALLBACK)
   const [events, setEvents] = useState([])
   const [insights, setInsights] = useState({ items: [], lastRun: null })
+  const [notifications, setNotifications] = useState([])
+  const [snippets, setSnippets] = useState([])
+  const [reviewLinks, setReviewLinks] = useState([])
+  const [feedback, setFeedback] = useState([])
   const [demoOff, setDemoOff] = useState(() => new Set()) // cuentas demo "desconectadas" (simulación)
   const [busy, setBusy] = useState(false)
   const alive = useRef(true)
@@ -76,6 +80,7 @@ export function useSocial({ demo, toast }) {
       if (r.platforms?.length) setPlatforms(r.platforms)
       setEvents((r.events || []).map(normalizeEvent))
       setInsights({ items: r.insights || [], lastRun: r.insights_last_run || null })
+      setNotifications(r.notifications || []); setSnippets(r.snippets || []); setReviewLinks(r.review_links || []); setFeedback(r.feedback || [])
     } catch (e) {
       if (!alive.current) return
       setBackend((b) => ({ ...b, state: e.code === 'unavailable' ? 'offline' : 'online' }))
@@ -124,6 +129,11 @@ export function useSocial({ demo, toast }) {
     const failed = (r.results || []).filter((x) => !x.ok)
     if (failed.length) toast.error(failed[0].error); else toast.success('Métricas actualizadas')
   }, [call, toast])
+  const saveSnippet = useCallback(async (sn) => { const r = await call('snippets/save', { method: 'POST', body: sn }); setSnippets(r.snippets || []); toast.success('Guardado') }, [call, toast])
+  const deleteSnippet = useCallback(async (id) => { const r = await call('snippets/delete', { method: 'POST', body: { id } }); setSnippets(r.snippets || []) }, [call])
+  const createReviewLink = useCallback(async (body) => { const r = await call('review/create', { method: 'POST', body }); setReviewLinks(r.review_links || []); return r.token }, [call])
+  const deleteReviewLink = useCallback(async (token) => { const r = await call('review/delete', { method: 'POST', body: { token } }); setReviewLinks(r.review_links || []) }, [call])
+  const testEmail = useCallback(async () => { await call('notifications/test', { method: 'POST', body: {} }); toast.success('Email de prueba enviado') }, [call, toast])
   const changePassword = useCallback(async (current, password) => {
     const r = await call('auth/password', { method: 'POST', body: { current, password } }, { silent: true })
     setBackend((b) => ({ ...b, user: r.user || null }))
@@ -191,7 +201,7 @@ export function useSocial({ demo, toast }) {
   }, [events])
 
   return {
-    backend, platforms, scheduler, runScheduler, serverPubs, serverPubsByRef, eventsByDest, deletePublication, accounts, destinations, destinationsByRef, busy, bootstrap, login, logout, changePassword, insights, refreshInsights, connectInstagram, addAccount, disconnectAccount, removeAccount,
+    backend, platforms, scheduler, runScheduler, serverPubs, serverPubsByRef, eventsByDest, deletePublication, accounts, destinations, destinationsByRef, busy, bootstrap, login, logout, changePassword, insights, refreshInsights, notifications, snippets, saveSnippet, deleteSnippet, reviewLinks, createReviewLink, deleteReviewLink, feedback, testEmail, connectInstagram, addAccount, disconnectAccount, removeAccount,
     setAccountProject, renewToken, checkAccount, savePublicationDestinations, publishDestination, cancelDestination,
   }
 }

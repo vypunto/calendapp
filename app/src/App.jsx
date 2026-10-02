@@ -12,6 +12,7 @@ import Stats from './components/Stats.jsx'
 import Settings from './components/Settings.jsx'
 import { Icon } from './components/ui.jsx'
 import Login from './components/Login.jsx'
+import ReviewPage, { reviewToken } from './components/Review.jsx'
 import mark from './assets/mark.svg'
 
 function Toasts() {
@@ -57,6 +58,8 @@ function Shell() {
 // Acceso: con servidor disponible, nadie entra sin sesión. Sin servidor (solo hoja) o en la demo, se abre la app.
 function Gate() {
   const app = useApp()
+  const review = reviewToken()
+  if (review) return <ReviewPage token={review} />
   const { backend } = app.social
   if (app.demo) return <Shell />
   if (backend.state === 'unknown') return <div className="lg-splash"><img src={mark} alt="Cargando Nowepost" /></div>

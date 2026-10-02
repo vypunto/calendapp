@@ -58,6 +58,10 @@ const SCHEMA = [
   `CREATE TABLE IF NOT EXISTS login_attempts (ip TEXT NOT NULL, at INTEGER NOT NULL)`,
   `CREATE TABLE IF NOT EXISTS app_state (key TEXT PRIMARY KEY, value TEXT)`,
   `CREATE TABLE IF NOT EXISTS post_insights (channel_id INTEGER PRIMARY KEY REFERENCES publication_channels(id) ON DELETE CASCADE, metrics TEXT NOT NULL DEFAULT '{}', error TEXT, fetched_at TEXT NOT NULL)`,
+  `CREATE TABLE IF NOT EXISTS notifications (key TEXT PRIMARY KEY, kind TEXT NOT NULL, title TEXT NOT NULL, message TEXT, link TEXT, emailed INTEGER NOT NULL DEFAULT 0, at TEXT NOT NULL)`,
+  `CREATE TABLE IF NOT EXISTS snippets (id SERIAL PRIMARY KEY, project_id TEXT, kind TEXT NOT NULL, name TEXT NOT NULL, body TEXT NOT NULL, created_at TEXT NOT NULL)`,
+  `CREATE TABLE IF NOT EXISTS review_links (token TEXT PRIMARY KEY, project_id TEXT, label TEXT, date_from TEXT NOT NULL, date_to TEXT NOT NULL, created_by TEXT, created_at TEXT NOT NULL, expires_at TEXT NOT NULL)`,
+  `CREATE TABLE IF NOT EXISTS review_feedback (id SERIAL PRIMARY KEY, token TEXT NOT NULL REFERENCES review_links(token) ON DELETE CASCADE, ref TEXT NOT NULL, decision TEXT NOT NULL, comment TEXT, author TEXT, at TEXT NOT NULL)`,
   `CREATE TABLE IF NOT EXISTS users (email TEXT PRIMARY KEY, name TEXT NOT NULL DEFAULT '', pass_hash TEXT NOT NULL, must_change INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL, updated_at TEXT NOT NULL)`,
 ]
 
@@ -66,6 +70,8 @@ async function migrate(d) {
   // Formato de imagen (recorte) de la publicación.
   await d.query('ALTER TABLE publications ADD COLUMN IF NOT EXISTS image_ratio TEXT')
   await d.query('ALTER TABLE publications ADD COLUMN IF NOT EXISTS image_fit TEXT')
+  // Primer comentario automático (p. ej. hashtags fuera del texto).
+  await d.query('ALTER TABLE publications ADD COLUMN IF NOT EXISTS first_comment TEXT')
   // Usuarios del equipo: se crean una vez; no se pisa una contraseña ya cambiada.
   const initial = get('INITIAL_TEAM_PASSWORD').trim()
   if (initial) {
