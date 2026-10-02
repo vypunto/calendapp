@@ -50,7 +50,7 @@ const fromSeed = (a, status) => ({
 const fromDemo = (a) => ({ ...fromSeed({ username: a.username, projectId: a.projectId, platform: a.platform }, 'demo'), source: 'demo' })
 
 export function useSocial({ demo, toast }) {
-  const [backend, setBackend] = useState({ state: 'unknown', configured: null, authenticated: false, version: null })
+  const [backend, setBackend] = useState({ state: 'unknown', configured: null, authenticated: false, user: null, version: null })
   const [serverAccounts, setServerAccounts] = useState([])
   const [destinations, setDestinations] = useState([])
   const [serverPubs, setServerPubs] = useState([])
@@ -67,7 +67,7 @@ export function useSocial({ demo, toast }) {
     try {
       const r = await api('bootstrap')
       if (!alive.current) return
-      setBackend({ state: 'online', configured: r.configured || {}, authenticated: !!r.authenticated, version: r.version || null })
+      setBackend({ state: 'online', configured: r.configured || {}, authenticated: !!r.authenticated, user: r.user || null, version: r.version || null })
       setServerAccounts((r.accounts || []).map(fromServer))
       setDestinations((r.destinations || []).map((d) => ({ ...normalizeDestination(d), ref: d.ref })))
       setServerPubs(r.publications || [])
@@ -105,18 +105,23 @@ export function useSocial({ demo, toast }) {
   const call = useCallback(async (route, opts, { silent = false } = {}) => {
     setBusy(true)
     try { return await api(route, opts) } catch (e) {
-      if (e instanceof ApiError && e.status === 401) setBackend((b) => ({ ...b, authenticated: false }))
+      if (e instanceof ApiError && e.status === 401 && route !== 'auth/password') setBackend((b) => ({ ...b, authenticated: false }))
       if (!silent) toast.error(e.message)
       throw e
     } finally { if (alive.current) setBusy(false) }
   }, [toast])
 
-  const login = useCallback(async (password) => {
-    const r = await call('auth/login', { method: 'POST', body: { password } }, { silent: true })
+  const login = useCallback(async (password, email = '') => {
+    const r = await call('auth/login', { method: 'POST', body: email ? { email, password } : { password } }, { silent: true })
     if (r.ok) { setBackend((b) => ({ ...b, authenticated: true })); await bootstrap() }
     return true
   }, [call, bootstrap])
-  const logout = useCallback(async () => { try { await api('auth/logout', { method: 'POST', body: {} }) } catch { /* sin sesión */ } setBackend((b) => ({ ...b, authenticated: false })); setDestinations([]); setServerPubs([]) }, [])
+  const changePassword = useCallback(async (current, password) => {
+    const r = await call('auth/password', { method: 'POST', body: { current, password } }, { silent: true })
+    setBackend((b) => ({ ...b, user: r.user || null }))
+    return true
+  }, [call])
+  const logout = useCallback(async () => { try { await api('auth/logout', { method: 'POST', body: {} }) } catch { /* sin sesión */ } setBackend((b) => ({ ...b, authenticated: false, user: null })); setDestinations([]); setServerPubs([]) }, [])
 
   // OAuth oficial de Instagram: el usuario introduce sus credenciales en instagram.com, nunca en Nowepost.
   const connectInstagram = useCallback(async (projectId, { forceReauth = false, accountId = null } = {}) => {
@@ -178,7 +183,7 @@ export function useSocial({ demo, toast }) {
   }, [events])
 
   return {
-    backend, platforms, scheduler, runScheduler, serverPubs, serverPubsByRef, eventsByDest, deletePublication, accounts, destinations, destinationsByRef, busy, bootstrap, login, logout, connectInstagram, addAccount, disconnectAccount, removeAccount,
+    backend, platforms, scheduler, runScheduler, serverPubs, serverPubsByRef, eventsByDest, deletePublication, accounts, destinations, destinationsByRef, busy, bootstrap, login, logout, changePassword, connectInstagram, addAccount, disconnectAccount, removeAccount,
     setAccountProject, renewToken, checkAccount, savePublicationDestinations, publishDestination, cancelDestination,
   }
 }

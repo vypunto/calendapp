@@ -57,6 +57,7 @@ const SCHEMA = [
   `CREATE TABLE IF NOT EXISTS oauth_states (state TEXT PRIMARY KEY, project_id TEXT, session_hash TEXT NOT NULL, created_at TEXT NOT NULL)`,
   `CREATE TABLE IF NOT EXISTS login_attempts (ip TEXT NOT NULL, at INTEGER NOT NULL)`,
   `CREATE TABLE IF NOT EXISTS app_state (key TEXT PRIMARY KEY, value TEXT)`,
+  `CREATE TABLE IF NOT EXISTS users (email TEXT PRIMARY KEY, name TEXT NOT NULL DEFAULT '', pass_hash TEXT NOT NULL, must_change INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL, updated_at TEXT NOT NULL)`,
 ]
 
 async function migrate(d) {
@@ -64,6 +65,15 @@ async function migrate(d) {
   // Formato de imagen (recorte) de la publicación.
   await d.query('ALTER TABLE publications ADD COLUMN IF NOT EXISTS image_ratio TEXT')
   await d.query('ALTER TABLE publications ADD COLUMN IF NOT EXISTS image_fit TEXT')
+  // Usuarios del equipo: se crean una vez; no se pisa una contraseña ya cambiada.
+  const initial = get('INITIAL_TEAM_PASSWORD').trim()
+  if (initial) {
+    const { SEED_USERS, hashPassword } = await import('./users.js')
+    for (const u of SEED_USERS) {
+      if ((await d.query('SELECT 1 FROM users WHERE email = $1', [u.email])).rows.length) continue
+      await d.query('INSERT INTO users (email, name, pass_hash, must_change, created_at, updated_at) VALUES ($1, $2, $3, 1, $4, $4) ON CONFLICT (email) DO NOTHING', [u.email, u.name, hashPassword(initial), now()])
+    }
+  }
   const { rows } = await d.query('SELECT COUNT(*)::int AS n FROM projects')
   if (rows[0].n > 0) return
   const seed = (await import('./seed-projects.json', { with: { type: 'json' } })).default

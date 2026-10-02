@@ -35,7 +35,7 @@ const validTz = (tz) => { try { new Intl.DateTimeFormat('en', { timeZone: tz });
 async function bootstrap(req, res) {
   const authed = Auth.check(req)
   sendJson(res, {
-    ok: true, backend: true, version: VERSION, configured: cfg.flags(), authenticated: authed,
+    ok: true, backend: true, version: VERSION, configured: cfg.flags(), authenticated: authed, user: Auth.user(req),
     projects: await Repo.projects(), platforms: Platforms.all(), accounts: await Repo.accounts(), scheduler: authed ? await Repo.schedulerInfo() : null,
     publications: authed ? await Repo.publications() : [], destinations: authed ? await Repo.channels() : [], events: authed ? await Repo.events() : [],
   })
@@ -178,17 +178,18 @@ export async function handle(req, res) {
   try {
     const route = queryOf(req).r || ''
     const method = req.method || 'GET'
-    if (route === 'status') return sendJson(res, { ok: true, backend: true, version: VERSION, configured: cfg.flags(), authenticated: Auth.check(req) })
+    if (route === 'status') return sendJson(res, { ok: true, backend: true, version: VERSION, configured: cfg.flags(), authenticated: Auth.check(req), user: Auth.user(req) })
     if (route === 'bootstrap' && method === 'GET') return await bootstrap(req, res)
     if (method !== 'POST') fail('not_found', 'Ruta no encontrada.', 404)
     Auth.requireCsrf(req)
     const input = await bodyOf(req)
     if (route === 'auth/login') {
-      if (!(await Auth.login(req, res, String(input.password ?? '')))) fail('bad_credentials', 'Contraseña incorrecta.', 401)
+      if (!(await Auth.login(req, res, String(input.password ?? ''), String(input.email ?? '')))) fail('bad_credentials', input.email ? 'Correo o contraseña incorrectos.' : 'Contraseña incorrecta.', 401)
       return sendJson(res, { ok: true })
     }
     if (route === 'auth/logout') { Auth.logout(req, res); return sendJson(res, { ok: true }) }
     Auth.requireSession(req)
+    if (route === 'auth/password') return sendJson(res, { ok: true, user: await Auth.changePassword(req, res, String(input.current ?? ''), String(input.password ?? '')) })
     const fn = Object.hasOwn(POST, route) ? POST[route] : null
     if (!fn) fail('not_found', 'Ruta no encontrada.', 404)
     return await fn(req, res, input)
