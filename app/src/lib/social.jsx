@@ -23,9 +23,9 @@ export const PLATFORMS_FALLBACK = [
     'Permisos solicitados: instagram_business_basic e instagram_business_content_publish.',
     'Imágenes en JPEG (máx. 8 MB). Reels en MP4/MOV (3 s–15 min, máx. 300 MB). Stories en vídeo de hasta 60 s (máx. 100 MB).',
     'Texto de hasta 2.200 caracteres, 30 hashtags y 20 menciones. Carruseles de hasta 10 imágenes.',
-    'Instagram limita las publicaciones por API cada 24 h; CalendApp consulta la cuota antes de publicar.',
+    'Instagram limita las publicaciones por API cada 24 h; Nowepost consulta la cuota antes de publicar.',
     'El acceso dura 60 días y se renueva automáticamente; si caduca hay que volver a conectar la cuenta.',
-    'Meta no permite borrar publicaciones desde la API: eliminarlas en CalendApp no las quita de Instagram.',
+    'Meta no permite borrar publicaciones desde la API: eliminarlas en Nowepost no las quita de Instagram.',
   ] },
   { id: 'facebook', label: 'Facebook', implemented: false, requirements: [] },
   { id: 'tiktok', label: 'TikTok', implemented: false, requirements: [] },
@@ -118,7 +118,7 @@ export function useSocial({ demo, toast }) {
   }, [call, bootstrap])
   const logout = useCallback(async () => { try { await api('auth/logout', { method: 'POST', body: {} }) } catch { /* sin sesión */ } setBackend((b) => ({ ...b, authenticated: false })); setDestinations([]); setServerPubs([]) }, [])
 
-  // OAuth oficial de Instagram: el usuario introduce sus credenciales en instagram.com, nunca en CalendApp.
+  // OAuth oficial de Instagram: el usuario introduce sus credenciales en instagram.com, nunca en Nowepost.
   const connectInstagram = useCallback(async (projectId, { forceReauth = false, accountId = null } = {}) => {
     if (demo) {
       setDemoOff((s) => { const n = new Set(s); if (accountId) n.delete(accountId); else n.clear(); return n })

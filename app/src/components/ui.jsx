@@ -105,7 +105,7 @@ export function ChannelTile({ canal, size = 24, onMedia }) {
 // ── Estados ───────────────────────────────────────────────────────────────
 const PUB_TONE = { publicado: '', programado: 'green', borrador: 'no-dot', cancelado: 'red', 'en edición': 'amber', aprobado: 'green', error: 'red', publicando: 'amber' }
 const REQ_TONE = { pendiente: 'amber', 'en revisión': 'blue', aprobado: 'green', rechazado: 'red' }
-const STATE_DOT = { publicado: '#8b918d', programado: '#18a879', borrador: '#c3c8c4', cancelado: '#c23a3a', 'en edición': '#d18a1f', aprobado: '#18a879', error: '#c23a3a', publicando: '#d18a1f' }
+const STATE_DOT = { publicado: '#8b918d', programado: '#7553f0', borrador: '#c3c8c4', cancelado: '#c23a3a', 'en edición': '#d18a1f', aprobado: '#7553f0', error: '#c23a3a', publicando: '#d18a1f' }
 export const stateDot = (estado) => STATE_DOT[(estado || '').toLowerCase().trim()] || '#c3c8c4'
 
 export function StatusBadge({ estado, kind = 'pub', glass }) {

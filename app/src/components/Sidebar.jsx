@@ -4,8 +4,8 @@ import { projectColor } from '../lib/data.js'
 import { prettyProject } from '../lib/projects.js'
 import { ChannelTile, Icon, accountDot, useOutside } from './ui.jsx'
 import { ACCOUNT_STATUS } from '../lib/social.jsx'
-import logo from '../assets/logo_calendapp.png'
-import favicon from '../assets/favicon.jpg'
+import logo from "../assets/logo_nowepost.png"
+import favicon from "../assets/mark.svg"
 
 const MAX_PROJECTS = 6
 
@@ -124,7 +124,7 @@ export default function Sidebar() {
   return (
     <aside className={`sidebar ${collapsed ? 'collapsed' : ''}`} aria-label="Navegación principal">
       <div className="sidebar-brand">
-        {collapsed ? <img src={favicon} alt="CalendApp" width="30" height="30" style={{ borderRadius: 8, height: 30 }} /> : <img src={logo} alt="CalendApp · by El Chandrio Group" />}
+        {collapsed ? <img src={favicon} alt="Nowepost" width="30" height="30" style={{ height: 30 }} /> : <img src={logo} alt="Nowepost" />}
         <button className="icon-btn" onClick={() => app.setSidebarCollapsed(!collapsed)} title={collapsed ? 'Expandir' : 'Contraer'} aria-label={collapsed ? 'Expandir barra lateral' : 'Contraer barra lateral'}><Icon name="panel" size={16} /></button>
       </div>
       <AccountSwitcher />
