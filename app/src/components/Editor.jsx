@@ -270,7 +270,7 @@ export default function Editor() {
   const backend = app.social.backend
   const disabledReason = form.canal !== 'Instagram' ? 'Este canal solo se registra en el calendario.'
     : app.demo ? null
-      : backend.state !== 'online' ? 'El servidor de CalendApp no está disponible: los destinos no se pueden guardar.'
+      : backend.state !== 'online' ? 'El servidor de Nowepost no está disponible: los destinos no se pueden guardar.'
         : !backend.authenticated ? 'La sesión del servidor ha caducado: vuelve a entrar con el acceso del equipo para elegir cuentas y programar.'
           : null
   const pickedAccounts = [...selected].map((id) => app.accountById(id)).filter(Boolean)

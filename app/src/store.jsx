@@ -498,11 +498,11 @@ export function AppProvider({ children }) {
   // ── Sesión ──────────────────────────────────────────────────────────────
   // Una sola contraseña: el acceso de admin lo valida el servidor y abre a la vez la sesión del servidor.
   // Sin servidor (solo hoja de cálculo) o en la demo, se usa la comprobación local de siempre.
-  const login = useCallback(async (password) => {
+  const login = useCallback(async (password, email = '') => {
     const done = () => { lsSet(AUTH_KEY, '1'); setIsAuth(true); return true }
     if (demo) return password === PASSWORD ? done() : false
     try {
-      await social.login(password)
+      await social.login(password, email)
       return done()
     } catch (e) {
       if (e.code === 'unavailable') return password === PASSWORD ? done() : false
@@ -517,9 +517,11 @@ export function AppProvider({ children }) {
   useEffect(() => {
     if (demo || social.backend.state !== 'online') return
     if (!social.backend.authenticated && isAuth) { lsRemove(AUTH_KEY); setIsAuth(false) }
+    if (social.backend.authenticated && !isAuth) { lsSet(AUTH_KEY, '1'); setIsAuth(true) }
   }, [demo, social.backend.state, social.backend.authenticated, isAuth])
 
-  const userName = lsGet(NAME_KEY) || ''
+  const user = social.backend.user
+  const userName = user?.name || lsGet(NAME_KEY) || ''
 
   // ── Demo ────────────────────────────────────────────────────────────────
   const enterDemo = useCallback(() => {
@@ -547,7 +549,7 @@ export function AppProvider({ children }) {
     selectedPub, setSelectedPub, editing, setEditing, showAuth, setShowAuth,
     requestForm, setRequestForm, requestEdit, setRequestEdit, requestDelete, setRequestDelete, toasts, toast,
     social, accounts, account, activeAccount, setActiveAccount, accountOf, accountsOf, accountById, matchesAccount, pubMatchesAccount, canPublish,
-    newPubDate, setNewPubDate, login, logout, requireAuth, userName, enterDemo, exitDemo, sidebarCollapsed, setSidebarCollapsed, setRequests,
+    newPubDate, setNewPubDate, login, logout, requireAuth, user, userName, changePassword: social.changePassword, enterDemo, exitDemo, sidebarCollapsed, setSidebarCollapsed, setRequests,
   }
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }

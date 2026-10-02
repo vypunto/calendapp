@@ -17,12 +17,12 @@ export async function api(route, { method = 'GET', body, timeout = 20000 } = {})
       body: body === undefined ? undefined : JSON.stringify(body),
     })
   } catch (e) {
-    throw new ApiError('unavailable', 'No se pudo contactar con el servidor de CalendApp.')
+    throw new ApiError('unavailable', 'No se pudo contactar con el servidor de Nowepost.')
   } finally { clearTimeout(t) }
   const text = await res.text()
   let json = null
   try { json = JSON.parse(text) } catch { /* no es JSON: el backend no está desplegado */ }
-  if (!json || typeof json !== 'object') throw new ApiError('unavailable', 'El servidor de CalendApp no está disponible en esta dirección.', res.status)
+  if (!json || typeof json !== 'object') throw new ApiError('unavailable', 'El servidor de Nowepost no está disponible en esta dirección.', res.status)
   if (!res.ok || json.ok === false) throw new ApiError(json.error?.code || 'error', json.error?.message || `Error ${res.status}`, res.status)
   return json
 }

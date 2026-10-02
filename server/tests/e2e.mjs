@@ -5,7 +5,7 @@ import { startMock } from './mock-meta.js'
 
 const APP = 'http://127.0.0.1:8900'; const MOCK = 'http://127.0.0.1:8901'
 Object.assign(process.env, {
-  APP_KEY: crypto.randomBytes(32).toString('base64'), ADMIN_PASSWORD: 'pw-test', META_APP_ID: '123', META_APP_SECRET: 'test-secret', CRON_SECRET: 'cron-test',
+  APP_KEY: crypto.randomBytes(32).toString('base64'), ADMIN_PASSWORD: 'pw-test', INITIAL_TEAM_PASSWORD: 'inicial-test-1', META_APP_ID: '123', META_APP_SECRET: 'test-secret', CRON_SECRET: 'cron-test',
   META_REDIRECT_URI: `${APP}/api/instagram-callback`, APP_URL: `${APP}/`, DATABASE_URL: 'pglite://memory',
   META_GRAPH_BASE: MOCK, META_OAUTH_TOKEN: `${MOCK}/oauth/access_token`, MEDIA_ALLOW_PRIVATE: '1',
 })
@@ -37,6 +37,14 @@ try {
   ok('acción sin sesión → 401', (await status('accounts/add', { method: 'POST', headers: H(), body: '{"username":"x"}' })) === 401)
   ok('contraseña incorrecta → 401', (await status('auth/login', { method: 'POST', headers: H(), body: '{"password":"mala"}' })) === 401)
   R = await post('auth/login', { password: '  pw-test\n' }); ok('login tolera espacios/saltos de línea sobrantes', R.ok === true); cookie = ''
+  // Usuarios del equipo (correo + contraseña, cambio obligatorio en el primer acceso).
+  ok('usuario con contraseña incorrecta → 401', (await status('auth/login', { method: 'POST', headers: H(), body: JSON.stringify({ email: 'n.romo@grupoelchandrio.com', password: 'mala' }) })) === 401)
+  R = await post('auth/login', { email: ' N.Romo@grupoelchandrio.com ', password: 'inicial-test-1' }); ok('login de usuario sembrado', R.ok === true && !!cookie)
+  R = await get('status'); ok('sesión con usuario y cambio de contraseña pendiente', R.user?.email === 'n.romo@grupoelchandrio.com' && R.user.mustChange === true)
+  R = await post('auth/password', { current: 'inicial-test-1', password: 'corta1' }); ok('contraseña débil rechazada', R.ok === false)
+  R = await post('auth/password', { current: 'inicial-test-1', password: 'NuevaClave2026' }); ok('cambio de contraseña', R.ok === true && R.user.mustChange === false)
+  R = await get('status'); ok('la sesión renovada ya no exige cambio', R.user?.mustChange === false); cookie = ''
+  R = await post('auth/login', { email: 'n.romo@grupoelchandrio.com', password: 'NuevaClave2026' }); ok('login con la nueva contraseña', R.ok === true); cookie = ''
   R = await post('auth/login', { password: 'pw-test' }); ok('login correcto (cookie HttpOnly firmada)', R.ok === true && cookie.startsWith('calendapp_sid='))
   ok('una cookie manipulada no vale', (await status('accounts/add', { method: 'POST', headers: { ...H(), Cookie: cookie.slice(0, -3) + 'abc' }, body: '{"username":"zz"}' })) === 401)
 

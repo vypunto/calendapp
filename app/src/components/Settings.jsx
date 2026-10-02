@@ -47,7 +47,7 @@ function SchedulerRow() {
   )
 }
 
-// ── Servidor de CalendApp (OAuth, cuentas y publicación) ──────────────────
+// ── Servidor de Nowepost (OAuth, cuentas y publicación) ──────────────────
 function ServerGroup() {
   const app = useApp()
   const { backend } = app.social
@@ -56,7 +56,7 @@ function ServerGroup() {
     ['meta_app', 'Aplicación de Meta (ID y secreto)'], ['redirect_uri', 'URL de retorno OAuth'], ['crypto', 'Clave de cifrado de tokens'], ['admin', 'Contraseña de administración'],
   ]
   return (
-    <Group title="Servidor de CalendApp" sub="Guarda las cuentas conectadas, cifra los tokens y programa las publicaciones. Los tokens nunca llegan al navegador.">
+    <Group title="Servidor de Nowepost" sub="Guarda las cuentas conectadas, cifra los tokens y programa las publicaciones. Los tokens nunca llegan al navegador.">
       <Row icon={<div className="integration-icon" style={{ background: 'var(--ink)' }}><Icon name="code" size={19} /></div>} title="Backend"
         sub={backend.state === 'online' ? `Disponible${backend.version ? ` · v${backend.version}` : ''}` : backend.state === 'offline' ? 'No disponible en esta dirección' : 'Comprobando…'}>
         <span className={`badge ${backend.state === 'online' ? 'green' : backend.state === 'offline' ? 'red' : 'no-dot'}`}>{backend.state === 'online' ? 'Conectado' : backend.state === 'offline' ? 'Sin conexión' : 'Comprobando'}</span>
@@ -110,7 +110,7 @@ function InstagramGroup({ platform }) {
   }
   const live = (a) => a.status === 'connected' || a.status === 'demo'
   return (
-    <Group title="Instagram" sub="Conexión oficial con Meta (inicio de sesión de Instagram). Introduces tus credenciales en instagram.com, nunca en CalendApp.">
+    <Group title="Instagram" sub="Conexión oficial con Meta (inicio de sesión de Instagram). Introduces tus credenciales en instagram.com, nunca en Nowepost.">
       {app.demo && <div className="row-item"><div className="grow"><b>Modo demo</b><small>Conectar y desconectar son simulaciones. Fuera del demo se abre el inicio de sesión oficial de Instagram.</small></div><span className="badge blue">Simulado</span></div>}
       {app.accounts.map((a) => {
         const exp = a.tokenExpiresAt
@@ -226,7 +226,7 @@ export default function Settings() {
               <Row title={app.isAuth ? 'Acceso de equipo activo' : 'Sin acceso de equipo'} sub={`Rol: ${app.isAuth ? 'Admin' : 'Solicitante'}`}>
                 {app.isAuth ? <button className="btn" onClick={app.logout}><Icon name="logout" size={14} /> Cerrar sesión</button> : <button className="btn btn-primary" onClick={() => app.setShowAuth(true)}><Icon name="lock" size={14} /> Acceso del equipo</button>}
               </Row>
-              <Row title="Política de privacidad" sub="Qué datos trata CalendApp y cómo eliminarlos."><a className="btn btn-sm" href="./privacy.html" target="_blank" rel="noreferrer">Abrir <Icon name="external" size={12} /></a></Row>
+              <Row title="Política de privacidad" sub="Qué datos trata Nowepost y cómo eliminarlos."><a className="btn btn-sm" href="./privacy.html" target="_blank" rel="noreferrer">Abrir <Icon name="external" size={12} /></a></Row>
               <Row title="Modo demo" sub="Explora la app con datos de ejemplo, sin tocar la hoja.">
                 <button type="button" className={`switch ${app.demo ? 'on' : ''}`} onClick={() => (app.demo ? app.exitDemo() : app.enterDemo())} role="switch" aria-checked={app.demo} aria-label="Modo demo" />
               </Row>
@@ -255,7 +255,7 @@ export default function Settings() {
                 </Row>
               )
             })}
-            {app.hiddenCount > 0 && !app.demo && <Row title={`${app.hiddenCount} registros de otros proyectos ocultos`} sub="Hay filas en la hoja de proyectos que ya no están activos. No se muestran en CalendApp ni se modifican en la hoja." />}
+            {app.hiddenCount > 0 && !app.demo && <Row title={`${app.hiddenCount} registros de otros proyectos ocultos`} sub="Hay filas en la hoja de proyectos que ya no están activos. No se muestran en Nowepost ni se modifican en la hoja." />}
           </Group>
         )}
 

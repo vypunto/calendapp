@@ -48,6 +48,10 @@ const P = {
   layers: '<path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="M2 12a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 12"/><path d="M2 17a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 17"/>',
   story: '<circle cx="12" cy="12" r="9" stroke-dasharray="3.2 3"/><circle cx="12" cy="12" r="4"/>',
   globe: '<circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20M2 12h20"/>',
+  mail: '<rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 6L2 7"/>',
+  eye: '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+  eyeOff: '<path d="M9.9 4.24A9 9 0 0 1 12 4c6.5 0 10 8 10 8a17 17 0 0 1-2.2 3.2M6.6 6.6A17 17 0 0 0 2 12s3.5 7 10 7a9.7 9.7 0 0 0 5.4-1.6M14.1 14.1a3 3 0 1 1-4.2-4.2M2 2l20 20"/>',
+  arrowRight: '<path d="M5 12h14M13 6l6 6-6 6"/>',
   logout: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>',
   info: '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/>',
   sheet: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h8M8 9h2"/>',
@@ -105,7 +109,7 @@ export function ChannelTile({ canal, size = 24, onMedia }) {
 // ── Estados ───────────────────────────────────────────────────────────────
 const PUB_TONE = { publicado: '', programado: 'green', borrador: 'no-dot', cancelado: 'red', 'en edición': 'amber', aprobado: 'green', error: 'red', publicando: 'amber' }
 const REQ_TONE = { pendiente: 'amber', 'en revisión': 'blue', aprobado: 'green', rechazado: 'red' }
-const STATE_DOT = { publicado: '#8b918d', programado: '#18a879', borrador: '#c3c8c4', cancelado: '#c23a3a', 'en edición': '#d18a1f', aprobado: '#18a879', error: '#c23a3a', publicando: '#d18a1f' }
+const STATE_DOT = { publicado: '#8b918d', programado: '#7553f0', borrador: '#c3c8c4', cancelado: '#c23a3a', 'en edición': '#d18a1f', aprobado: '#7553f0', error: '#c23a3a', publicando: '#d18a1f' }
 export const stateDot = (estado) => STATE_DOT[(estado || '').toLowerCase().trim()] || '#c3c8c4'
 
 export function StatusBadge({ estado, kind = 'pub', glass }) {
