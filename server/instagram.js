@@ -102,3 +102,10 @@ export async function comment(mediaId, token, message) {
   const j = await call('POST', v(`${mediaId}/comments`), { message, access_token: token })
   return String(j.id ?? '')
 }
+
+// Publicaciones recientes de la cuenta (también las subidas fuera de Nowepost). Requiere instagram_business_basic.
+export async function recentMedia(igId, token, limit = 50) {
+  const j = await call('GET', v(`${igId}/media`), { fields: 'id,caption,media_type,media_product_type,permalink,timestamp,thumbnail_url,media_url', limit: String(limit), access_token: token })
+  return Array.isArray(j.data) ? j.data : []
+}
+export const tipoOf = (m) => (m.media_product_type === 'REELS' ? 'reel' : m.media_product_type === 'STORY' ? 'historia' : m.media_type === 'CAROUSEL_ALBUM' ? 'carrusel' : m.media_type === 'VIDEO' ? 'video' : 'imagen')

@@ -35,6 +35,15 @@ export async function startMock(port) {
       return out({ user_id: `17841${who.length}`, username: who })
     }
     let m
+    if ((m = p.match(/^\/v25\.0\/(\d+)\/media$/)) && req.method === 'GET') {
+      const t = (d) => new Date(Date.now() - d * 86400000).toISOString().replace(/\.\d{3}Z$/, '+0000')
+      return out({ data: [
+        { id: 'H1', caption: 'Reel antiguo\n#teatro', media_type: 'VIDEO', media_product_type: 'REELS', permalink: 'https://www.instagram.com/reel/h1/', timestamp: t(3) },
+        { id: 'H2', caption: 'Carrusel subido a mano', media_type: 'CAROUSEL_ALBUM', media_product_type: 'FEED', permalink: 'https://www.instagram.com/p/h2/', timestamp: t(10) },
+        { id: 'H3', caption: 'Muy antiguo', media_type: 'IMAGE', media_product_type: 'FEED', permalink: 'https://www.instagram.com/p/h3/', timestamp: t(200) },
+        ...st.published.map((x) => ({ id: x.id, caption: 'Publicado desde Nowepost', media_type: 'IMAGE', media_product_type: 'FEED', permalink: `https://www.instagram.com/p/${x.id}/`, timestamp: t(0) })),
+      ] })
+    }
     if ((m = p.match(/^\/v25\.0\/(\d+)\/media$/))) {
       const u = form.image_url || form.video_url
       if (!u && form.media_type !== 'CAROUSEL') return out({ error: { message: 'Missing media', type: 'OAuthException', code: 100 } }, 400)
@@ -62,7 +71,7 @@ export async function startMock(port) {
       st.comments = [...(st.comments || []), { media: `M${m[1]}`, message: form.message }]
       return out({ id: `CM${st.comments.length}` })
     }
-    if ((m = p.match(/^\/v25\.0\/M(\d+)\/insights$/))) {
+    if ((m = p.match(/^\/v25\.0\/[MH](\d+)\/insights$/))) {
       if (st.noInsightsPerm) return out({ error: { message: '(#10) Application does not have permission for this action', type: 'OAuthException', code: 10 } }, 400)
       const metric = url.searchParams.get('metric') || ''
       if (metric.includes('ig_reels_avg_watch_time') && st.rejectReelMetric) return out({ error: { message: '(#100) metric[7] must be one of the following values', type: 'OAuthException', code: 100 } }, 400)
