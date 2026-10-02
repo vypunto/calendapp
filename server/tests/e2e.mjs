@@ -144,6 +144,11 @@ try {
   R = await post('insights/refresh'); const ins2 = R.insights.find((i) => i.channel_id === D1)
   ok('sin permiso: aviso de reconectar y se conservan las cifras', /reconectar|conectar/i.test(ins2.error || '') && ins2.metrics.reach === ins.metrics.reach)
   ok('…y la cuenta sigue conectada', (await acct('teatrocorfu7')).status === 'connected'); mock.state.noInsightsPerm = false
+  // Historial de la cuenta (publicaciones hechas fuera de Nowepost)
+  await query('UPDATE post_insights SET fetched_at = $1', ['2000-01-01T00:00:00Z'])
+  R = await post('insights/refresh'); const hist = R.insights.filter((i) => i.source === 'instagram')
+  ok('importa el historial de los últimos 90 días', hist.length === 2 && hist.some((h) => h.tipo === 'reel' && h.metrics.reach > 0) && hist.some((h) => h.tipo === 'carrusel'))
+  ok('lo publicado desde Nowepost no se duplica', R.insights.filter((i) => i.external_url?.includes('/p/M1') || i.channel_id === D1).length === 1)
   // Primer comentario automático
   R = await pub('corfu|2026-09-30|fc', { first_comment: '#uno #dos', destinations: [D(ACC)] })
   R = await post('destinations/publish', { id: R.destinations[0].id })

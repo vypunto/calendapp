@@ -81,7 +81,47 @@ export async function collectInsights(budgetMs = 40000, staleHours = 12) {
       out.push({ channel: Number(t.id), ok: false, error: msg })
     }
   }
+  await collectHistory(Math.max(5000, budgetMs - (Date.now() - started)), staleHours, out)
   await Repo.setState('insights_last_run', now())
+  return out
+}
+
+const permMsg = (e) => (e.isPermissionError() || /permission/i.test(e.message) ? 'Falta el permiso de estadísticas: vuelve a conectar la cuenta en Ajustes → Integraciones.' : e.userMessage())
+
+// Historial: últimas publicaciones de cada cuenta conectada (90 días) y sus métricas, aunque no salieran de Nowepost.
+export async function collectHistory(budgetMs = 30000, staleHours = 24, out = []) {
+  const started = Date.now()
+  const tokens = new Map()
+  for (const pub of await Repo.accounts()) {
+    if (pub.status !== 'connected' || !pub.external_account_id || Date.now() - started > budgetMs) continue
+    const acc = await Repo.account(pub.id)
+    let token
+    try { token = Repo.token(acc) } catch { continue }
+    tokens.set(pub.id, token)
+    try {
+      const since = Date.now() - 90 * 86400000
+      for (const m of await Instagram.recentMedia(pub.external_account_id, token, 50)) {
+        if (Date.parse(m.timestamp || 0) >= since) await Repo.upsertAccountMedia(pub.id, m, Instagram.tipoOf(m))
+      }
+    } catch (e) {
+      if (!(e instanceof MetaException)) throw e
+      out.push({ account: pub.username, ok: false, error: e.userMessage() })
+    }
+  }
+  for (const t of await Repo.accountMediaTargets(90, Math.max(staleHours, 6))) {
+    if (Date.now() - started > budgetMs) break
+    const token = tokens.get(Number(t.account_id))
+    if (!token) continue
+    try {
+      await Repo.saveAccountMediaInsights(t.media_id, await Instagram.mediaInsights(t.media_id, token, t.tipo))
+      out.push({ media: t.media_id, ok: true })
+    } catch (e) {
+      if (!(e instanceof MetaException)) throw e
+      const msg = permMsg(e)
+      await Repo.saveAccountMediaInsights(t.media_id, {}, msg)
+      out.push({ media: t.media_id, ok: false, error: msg })
+    }
+  }
   return out
 }
 

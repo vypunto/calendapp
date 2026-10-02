@@ -62,6 +62,7 @@ const SCHEMA = [
   `CREATE TABLE IF NOT EXISTS snippets (id SERIAL PRIMARY KEY, project_id TEXT, kind TEXT NOT NULL, name TEXT NOT NULL, body TEXT NOT NULL, created_at TEXT NOT NULL)`,
   `CREATE TABLE IF NOT EXISTS review_links (token TEXT PRIMARY KEY, project_id TEXT, label TEXT, date_from TEXT NOT NULL, date_to TEXT NOT NULL, created_by TEXT, created_at TEXT NOT NULL, expires_at TEXT NOT NULL)`,
   `CREATE TABLE IF NOT EXISTS review_feedback (id SERIAL PRIMARY KEY, token TEXT NOT NULL REFERENCES review_links(token) ON DELETE CASCADE, ref TEXT NOT NULL, decision TEXT NOT NULL, comment TEXT, author TEXT, at TEXT NOT NULL)`,
+  `CREATE TABLE IF NOT EXISTS account_media (media_id TEXT PRIMARY KEY, account_id INTEGER NOT NULL REFERENCES social_accounts(id) ON DELETE CASCADE, caption TEXT, tipo TEXT, permalink TEXT, thumbnail TEXT, posted_at TEXT NOT NULL, metrics TEXT NOT NULL DEFAULT '{}', error TEXT, fetched_at TEXT)`,
   `CREATE TABLE IF NOT EXISTS users (email TEXT PRIMARY KEY, name TEXT NOT NULL DEFAULT '', pass_hash TEXT NOT NULL, must_change INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL, updated_at TEXT NOT NULL)`,
 ]
 

@@ -103,12 +103,12 @@ function Performance({ from, to }) {
     <section className="perf">
       <div className="perf-head">
         <div><h3 className="section-title">Rendimiento en Instagram</h3>
-          <p className="section-sub">Métricas de Meta de lo publicado desde Nowepost{insights.lastRun ? ` · actualizado ${new Date(insights.lastRun).toLocaleString('es-ES', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}` : ''}</p></div>
+          <p className="section-sub">Métricas de Meta de las cuentas conectadas (últimos 90 días, también lo subido fuera de Nowepost){insights.lastRun ? ` · actualizado ${new Date(insights.lastRun).toLocaleString('es-ES', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}` : ''}</p></div>
         <button className="btn btn-sm" onClick={refreshInsights} disabled={busy}><Icon name="refresh" size={14} /> Actualizar métricas</button>
       </div>
       {missingPerm && <div className="perf-warn"><Icon name="info" size={15} /> Alguna cuenta se conectó antes de pedir estadísticas. <button className="perf-link" onClick={app.goIntegrations}>Vuelve a conectarla</button> para ver sus métricas.</div>}
       {withData.length === 0 ? (
-        <div className="panel card-pad perf-empty"><Icon name="chart" size={22} /><div><b>Aún no hay métricas en este periodo</b><p className="muted" style={{ margin: 0 }}>Aparecen cuando se publica desde Nowepost; se recogen a diario durante los 30 días siguientes a cada publicación.</p></div></div>
+        <div className="panel card-pad perf-empty"><Icon name="chart" size={22} /><div><b>Aún no hay métricas en este periodo</b><p className="muted" style={{ margin: 0 }}>Pulsa «Actualizar métricas» para importar las publicaciones de los últimos 90 días de cada cuenta conectada. Después se actualizan solas cada día.</p></div></div>
       ) : <>
         <Kpis items={[{ label: 'Alcance', value: fmt(reach) }, { label: 'Interacciones', value: fmt(totalInter) }, { label: 'Tasa de interacción', value: `${rate.toFixed(1)}%` }, { label: 'Guardados y compartidos', value: fmt(sum('saved') + sum('shares')) }]} />
         <div className="stats-layout">
@@ -116,8 +116,8 @@ function Performance({ from, to }) {
             <div className="perf-head"><div><h3 className="section-title">Mejores publicaciones</h3><p className="section-sub">Top 5 del periodo</p></div>
               <div className="segmented">{[['reach', 'Alcance'], ['inter', 'Interacción'], ['rate', 'Tasa']].map(([k, l]) => <button key={k} className={sort === k ? 'on' : ''} onClick={() => setSort(k)}>{l}</button>)}</div></div>
             <table className="table perf-table"><thead><tr><th>Publicación</th><th>Alcance</th><th>Interac.</th><th>Guard.</th><th>Tasa</th></tr></thead><tbody>
-              {top.map((r) => <tr key={r.channel_id}>
-                <td><div className="perf-title"><Icon name={tipoIcon[r.tipo] || 'image'} size={14} /><div><b className="trunc">{r.external_url ? <a href={r.external_url} target="_blank" rel="noreferrer">{r.title || 'Sin título'}</a> : r.title || 'Sin título'}</b><small className="muted">{[proj(r.project_id), r.date.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })].filter(Boolean).join(' · ')}</small></div></div></td>
+              {top.map((r) => <tr key={r.key || r.channel_id}>
+                <td><div className="perf-title"><Icon name={tipoIcon[r.tipo] || 'image'} size={14} /><div><b className="trunc">{r.external_url ? <a href={r.external_url} target="_blank" rel="noreferrer">{r.title || 'Sin título'}</a> : r.title || 'Sin título'}</b><small className="muted">{[proj(r.project_id), r.date.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }), r.source === 'instagram' ? 'subida en Instagram' : 'desde Nowepost'].filter(Boolean).join(' · ')}</small></div></div></td>
                 <td>{fmt(r.reach)}</td><td>{fmt(r.inter)}</td><td>{fmt(r.metrics.saved || 0)}</td><td>{r.reach ? `${((r.inter / r.reach) * 100).toFixed(1)}%` : '—'}</td>
               </tr>)}
             </tbody></table>

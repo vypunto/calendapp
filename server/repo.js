@@ -180,7 +180,12 @@ export const insights = async () => (await query(
   `SELECT i.channel_id, i.metrics, i.error, i.fetched_at, c.social_account_id, c.published_at, c.external_url, p.ref, p.title, p.tipo, p.project_id
      FROM post_insights i JOIN publication_channels c ON c.id = i.channel_id JOIN publications p ON p.id = c.publication_id ORDER BY c.published_at DESC`)).rows
   .map((r) => ({ channel_id: Number(r.channel_id), social_account_id: Number(r.social_account_id), ref: r.ref, title: r.title, tipo: r.tipo, project_id: r.project_id,
-    published_at: r.published_at, external_url: r.external_url, metrics: jsonOr(r.metrics, {}), error: r.error, fetched_at: r.fetched_at }))
+    published_at: r.published_at, external_url: r.external_url, metrics: jsonOr(r.metrics, {}), error: r.error, fetched_at: r.fetched_at, key: `c${r.channel_id}`, source: 'nowepost' }))
+  .concat((await query(
+    `SELECT m.*, a.project_id FROM account_media m JOIN social_accounts a ON a.id = m.account_id
+     WHERE NOT EXISTS (SELECT 1 FROM publication_channels c WHERE c.external_post_id = m.media_id) ORDER BY m.posted_at DESC LIMIT 500`)).rows
+    .map((r) => ({ key: `m${r.media_id}`, channel_id: null, social_account_id: Number(r.account_id), ref: null, title: (String(r.caption || '').split('\n')[0].trim().slice(0, 70)) || 'Publicación de Instagram',
+      tipo: r.tipo, project_id: r.project_id, published_at: r.posted_at, external_url: r.permalink, thumbnail: r.thumbnail, metrics: jsonOr(r.metrics, {}), error: r.error, fetched_at: r.fetched_at, source: 'instagram' })))
 
 // ── Avisos del scheduler ──────────────────────────────────────────────────
 // Programadas que deberían haber salido hace más de `graceMin` minutos y siguen sin publicarse.
@@ -221,3 +226,19 @@ export async function addFeedback(token, ref, decision, comment, author) {
 export const feedbackFor = async (token) => (await query('SELECT id, ref, decision, comment, author, at FROM review_feedback WHERE token = $1 ORDER BY at', [token])).rows.map((r) => ({ ...r, id: Number(r.id) }))
 export const allFeedback = async () => (await query(
   `SELECT f.id, f.ref, f.decision, f.comment, f.author, f.at, l.label, l.project_id FROM review_feedback f JOIN review_links l ON l.token = f.token ORDER BY f.at DESC LIMIT 500`)).rows.map((r) => ({ ...r, id: Number(r.id) }))
+
+// ── Historial de la cuenta (publicaciones hechas fuera de Nowepost) ───────
+export async function upsertAccountMedia(accountId, m, tipo) {
+  await query(`INSERT INTO account_media (media_id, account_id, caption, tipo, permalink, thumbnail, posted_at) VALUES ($1, $2, $3, $4, $5, $6, $7)
+    ON CONFLICT (media_id) DO UPDATE SET caption = EXCLUDED.caption, permalink = EXCLUDED.permalink, thumbnail = EXCLUDED.thumbnail`,
+  [String(m.id), accountId, String(m.caption || '').slice(0, 2200), tipo, m.permalink || null, m.thumbnail_url || m.media_url || null, new Date(m.timestamp || Date.now()).toISOString().replace(/\.\d{3}Z$/, 'Z')])
+}
+// Las ya publicadas desde Nowepost se miden por su destino: no se duplican.
+export const accountMediaTargets = async (days = 90, staleHours = 24) => (await query(
+  `SELECT m.media_id, m.account_id, m.tipo, m.posted_at FROM account_media m
+   WHERE m.posted_at >= $1 AND m.tipo <> 'historia' AND (m.fetched_at IS NULL OR m.fetched_at < $2)
+     AND NOT EXISTS (SELECT 1 FROM publication_channels c WHERE c.external_post_id = m.media_id)
+   ORDER BY m.fetched_at NULLS FIRST, m.posted_at DESC`, [isoAfter(-days * 86400), isoAfter(-staleHours * 3600)])).rows
+export const saveAccountMediaInsights = (mediaId, metrics, error = null) => query(
+  `UPDATE account_media SET metrics = CASE WHEN $3::text IS NULL THEN $2 ELSE metrics END, error = $3, fetched_at = $4 WHERE media_id = $1`,
+  [mediaId, JSON.stringify(metrics || {}), error, now()])

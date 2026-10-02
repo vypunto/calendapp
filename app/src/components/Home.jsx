@@ -144,7 +144,7 @@ export default function Home() {
           {server && (
             <section className="panel card-pad home-perf">
               <h3 className="section-title">Últimos 7 días en Instagram</h3>
-              {ins.length === 0 ? <p className="muted" style={{ margin: '6px 0 0', fontSize: 13 }}>Las métricas aparecen tras publicar desde Nowepost.</p> : <>
+              {ins.length === 0 ? <p className="muted" style={{ margin: '6px 0 0', fontSize: 13 }}>Pulsa «Actualizar métricas» en Estadísticas para importar el historial de Instagram.</p> : <>
                 <div className="home-perf-nums"><div><b>{fmt(reach)}</b><small>Alcance</small></div><div><b>{fmt(inter)}</b><small>Interacciones</small></div><div><b>{ins.length}</b><small>Publicaciones</small></div></div>
                 <button className="btn btn-sm btn-ghost" onClick={() => app.setView('stats')}>Ver estadísticas <Icon name="right" size={13} /></button>
               </>}
