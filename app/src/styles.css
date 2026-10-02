@@ -904,3 +904,26 @@ details.plain[open] summary { border-bottom: 1px solid var(--line); }
   .lg-hero h1 { font-size: 28px; margin: 0; }
   .lg-panel { padding: 28px 20px; }
 }
+
+/* ── 12 · Rendimiento (métricas de Instagram) ───────────────────────────── */
+.perf { display: grid; gap: var(--s4); margin-bottom: var(--s6); }
+.perf-head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--s3); flex-wrap: wrap; }
+.perf-head .section-sub { margin-bottom: 0; }
+.perf-warn { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 10px 14px; border-radius: var(--r-md); background: var(--amber-bg); color: var(--amber); font-size: var(--fs-sm); font-weight: var(--fw-medium); }
+.perf-link { color: inherit; font-weight: var(--fw-bold); text-decoration: underline; }
+.perf-empty { display: flex; gap: var(--s3); align-items: center; color: var(--accent); }
+.perf-empty b { color: var(--ink); }
+.perf-table { margin-top: var(--s3); }
+.perf-table td { height: auto; padding: 9px 10px; }
+.perf-table th { padding: 9px 10px; }
+.perf-table tbody tr { cursor: default; }
+.perf-table td:not(:first-child), .perf-table th:not(:first-child) { text-align: right; font-variant-numeric: tabular-nums; }
+.perf-title { display: flex; gap: 8px; align-items: center; min-width: 0; color: var(--ink-3); }
+.perf-title > div { display: grid; min-width: 0; }
+.perf-title b { color: var(--ink); max-width: 260px; }
+.perf-title a:hover { color: var(--accent-600); text-decoration: underline; }
+.heat { display: grid; grid-template-columns: 82px repeat(7, 1fr); gap: 4px; margin-top: var(--s3); }
+.heat i { font-style: normal; text-align: center; font-size: var(--fs-xs); color: var(--ink-3); font-weight: var(--fw-semibold); }
+.heat small { font-size: var(--fs-xs); color: var(--ink-3); align-self: center; }
+.heat b { height: 38px; border-radius: 8px; display: grid; place-items: center; font-size: var(--fs-xs); font-weight: var(--fw-semibold); background: color-mix(in srgb, var(--accent) calc(var(--a) * 100%), var(--surface-3)); color: var(--ink); }
+@media (max-width: 760px) { .heat { grid-template-columns: 64px repeat(7, 1fr); } .heat b { height: 30px; font-size: 10px; } .perf-title b { max-width: 140px; } }

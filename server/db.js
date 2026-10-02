@@ -57,6 +57,7 @@ const SCHEMA = [
   `CREATE TABLE IF NOT EXISTS oauth_states (state TEXT PRIMARY KEY, project_id TEXT, session_hash TEXT NOT NULL, created_at TEXT NOT NULL)`,
   `CREATE TABLE IF NOT EXISTS login_attempts (ip TEXT NOT NULL, at INTEGER NOT NULL)`,
   `CREATE TABLE IF NOT EXISTS app_state (key TEXT PRIMARY KEY, value TEXT)`,
+  `CREATE TABLE IF NOT EXISTS post_insights (channel_id INTEGER PRIMARY KEY REFERENCES publication_channels(id) ON DELETE CASCADE, metrics TEXT NOT NULL DEFAULT '{}', error TEXT, fetched_at TEXT NOT NULL)`,
   `CREATE TABLE IF NOT EXISTS users (email TEXT PRIMARY KEY, name TEXT NOT NULL DEFAULT '', pass_hash TEXT NOT NULL, must_change INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL, updated_at TEXT NOT NULL)`,
 ]
 

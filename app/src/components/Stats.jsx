@@ -1,7 +1,7 @@
-import { useMemo, useState } from 'react'
+import { Fragment, useMemo, useState } from 'react'
 import { useApp } from '../store.jsx'
 import { MONTHS, MONTHS_SHORT, REQ_ESTADOS, thumbOf } from '../lib/data.js'
-import { prettyProject } from '../lib/projects.js'
+import { prettyProject, projectById } from '../lib/projects.js'
 import { ChannelTile, DemoBanner, Icon, Kpis, PageHead, StatusBadge, Thumb, firstMedia, tipoIcon } from './ui.jsx'
 
 const PERIODS = [['month', 'Este mes'], ['prev', 'Mes anterior'], ['90', '90 días'], ['year', 'Este año'], ['all', 'Todo']]
@@ -55,15 +55,89 @@ function AreaChart({ points }) {
   )
 }
 
-function Bars({ rows, total }) {
+function Bars({ rows, total, format }) {
   if (rows.length === 0) return <p className="muted" style={{ margin: 0 }}>Sin datos en este periodo.</p>
   return rows.map(([label, n, icon]) => (
     <div className="bar-row" key={label}>
       <span style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>{icon}<span className="trunc" style={{ textTransform: 'capitalize' }}>{label}</span></span>
       <div className="bar-track"><div className="bar-fill" style={{ width: `${(n / total) * 100}%` }} /></div>
-      <span className="v">{Math.round((n / total) * 100)}%</span>
+      <span className="v">{format ? format(n) : `${Math.round((n / total) * 100)}%`}</span>
     </div>
   ))
+}
+
+// ── Rendimiento real en Instagram (métricas de Meta de lo publicado desde Nowepost) ──
+const fmt = (n) => (n >= 10000 ? `${(n / 1000).toFixed(n >= 100000 ? 0 : 1)}k` : Math.round(n).toLocaleString('es-ES'))
+const DOW = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
+const SLOTS = [['Madrugada', 0, 7], ['Mañana', 7, 13], ['Tarde', 13, 20], ['Noche', 20, 24]]
+const inter = (m) => m.total_interactions ?? ((m.likes || 0) + (m.comments || 0) + (m.saved || 0) + (m.shares || 0))
+
+function Performance({ from, to }) {
+  const app = useApp()
+  const { insights, refreshInsights, busy, backend } = app.social
+  const [sort, setSort] = useState('reach')
+  const rows = useMemo(() => insights.items.filter((i) => {
+    if (app.account && String(i.social_account_id) !== app.account.id) return false
+    const d = i.published_at ? new Date(i.published_at) : null
+    return d && (!from || (d >= from && d <= to))
+  }).map((i) => ({ ...i, date: new Date(i.published_at), inter: inter(i.metrics), reach: i.metrics.reach || 0 })), [insights.items, app.account, from, to])
+  if (app.demo || backend.state !== 'online' || !backend.authenticated) return null
+
+  const withData = rows.filter((r) => Object.keys(r.metrics).length)
+  const sum = (k) => withData.reduce((a, r) => a + (k === 'inter' ? r.inter : r.metrics[k] || 0), 0)
+  const reach = sum('reach'), totalInter = sum('inter')
+  const rate = reach ? (totalInter / reach) * 100 : 0
+  const missingPerm = rows.some((r) => /permiso/i.test(r.error || ''))
+  const top = [...withData].sort((a, b) => (sort === 'rate' ? (b.inter / (b.reach || 1)) - (a.inter / (a.reach || 1)) : sort === 'inter' ? b.inter - a.inter : b.reach - a.reach)).slice(0, 5)
+  const byTipo = [...withData.reduce((m, r) => m.set(r.tipo, [...(m.get(r.tipo) || []), r]), new Map())]
+    .map(([t, list]) => [t, list.reduce((a, r) => a + r.reach, 0) / list.length, <Icon name={tipoIcon[t] || 'image'} size={16} key="i" />]).sort((a, b) => b[1] - a[1])
+  const heat = SLOTS.map(([label, a, b]) => ({ label, cells: [1, 2, 3, 4, 5, 6, 0].map((d) => {
+    const list = withData.filter((r) => r.date.getDay() === d && r.date.getHours() >= a && r.date.getHours() < b)
+    return { d, n: list.length, avg: list.length ? list.reduce((x, r) => x + r.inter, 0) / list.length : 0 }
+  }) }))
+  const maxAvg = Math.max(1, ...heat.flatMap((h) => h.cells.map((c) => c.avg)))
+  const best = heat.flatMap((h) => h.cells.map((c) => ({ ...c, slot: h.label }))).filter((c) => c.n).sort((a, b) => b.avg - a.avg)[0]
+  const proj = (id) => prettyProject(projectById(id)?.name || id || '')
+
+  return (
+    <section className="perf">
+      <div className="perf-head">
+        <div><h3 className="section-title">Rendimiento en Instagram</h3>
+          <p className="section-sub">Métricas de Meta de lo publicado desde Nowepost{insights.lastRun ? ` · actualizado ${new Date(insights.lastRun).toLocaleString('es-ES', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}` : ''}</p></div>
+        <button className="btn btn-sm" onClick={refreshInsights} disabled={busy}><Icon name="refresh" size={14} /> Actualizar métricas</button>
+      </div>
+      {missingPerm && <div className="perf-warn"><Icon name="info" size={15} /> Alguna cuenta se conectó antes de pedir estadísticas. <button className="perf-link" onClick={app.goIntegrations}>Vuelve a conectarla</button> para ver sus métricas.</div>}
+      {withData.length === 0 ? (
+        <div className="panel card-pad perf-empty"><Icon name="chart" size={22} /><div><b>Aún no hay métricas en este periodo</b><p className="muted" style={{ margin: 0 }}>Aparecen cuando se publica desde Nowepost; se recogen a diario durante los 30 días siguientes a cada publicación.</p></div></div>
+      ) : <>
+        <Kpis items={[{ label: 'Alcance', value: fmt(reach) }, { label: 'Interacciones', value: fmt(totalInter) }, { label: 'Tasa de interacción', value: `${rate.toFixed(1)}%` }, { label: 'Guardados y compartidos', value: fmt(sum('saved') + sum('shares')) }]} />
+        <div className="stats-layout">
+          <div className="panel card-pad">
+            <div className="perf-head"><div><h3 className="section-title">Mejores publicaciones</h3><p className="section-sub">Top 5 del periodo</p></div>
+              <div className="segmented">{[['reach', 'Alcance'], ['inter', 'Interacción'], ['rate', 'Tasa']].map(([k, l]) => <button key={k} className={sort === k ? 'on' : ''} onClick={() => setSort(k)}>{l}</button>)}</div></div>
+            <table className="table perf-table"><thead><tr><th>Publicación</th><th>Alcance</th><th>Interac.</th><th>Guard.</th><th>Tasa</th></tr></thead><tbody>
+              {top.map((r) => <tr key={r.channel_id}>
+                <td><div className="perf-title"><Icon name={tipoIcon[r.tipo] || 'image'} size={14} /><div><b className="trunc">{r.external_url ? <a href={r.external_url} target="_blank" rel="noreferrer">{r.title || 'Sin título'}</a> : r.title || 'Sin título'}</b><small className="muted">{[proj(r.project_id), r.date.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })].filter(Boolean).join(' · ')}</small></div></div></td>
+                <td>{fmt(r.reach)}</td><td>{fmt(r.inter)}</td><td>{fmt(r.metrics.saved || 0)}</td><td>{r.reach ? `${((r.inter / r.reach) * 100).toFixed(1)}%` : '—'}</td>
+              </tr>)}
+            </tbody></table>
+          </div>
+          <div className="panel card-pad">
+            <h3 className="section-title">Alcance medio por formato</h3><p className="section-sub">Qué tipo de contenido llega a más gente</p>
+            <Bars rows={byTipo.map(([t, v, i]) => [t, Math.round(v), i])} total={Math.max(1, ...byTipo.map((b) => b[1]))} format={fmt} />
+          </div>
+        </div>
+        <div className="panel card-pad">
+          <h3 className="section-title">Cuándo funciona mejor</h3>
+          <p className="section-sub">{best ? `Mejor franja: ${DOW[best.d]} por la ${best.slot.toLowerCase()} (${fmt(best.avg)} interacciones de media).` : ''} Interacciones medias por día y franja de publicación.</p>
+          <div className="heat" role="table">
+            <span />{[1, 2, 3, 4, 5, 6, 0].map((d) => <i key={d}>{DOW[d]}</i>)}
+            {heat.map((h) => <Fragment key={h.label}><small>{h.label}</small>{h.cells.map((c) => <b key={h.label + c.d} title={c.n ? `${c.n} publicaci${c.n === 1 ? 'ón' : 'ones'} · ${fmt(c.avg)} de media` : 'Sin publicaciones'} style={{ '--a': c.n ? 0.12 + 0.88 * (c.avg / maxAvg) : 0, color: c.avg / maxAvg > 0.55 ? '#fff' : undefined }}>{c.n ? fmt(c.avg) : ''}</b>)}</Fragment>)}
+          </div>
+        </div>
+      </>}
+    </section>
+  )
 }
 
 export default function Stats() {
@@ -100,6 +174,7 @@ export default function Stats() {
       </PageHead>
       <DemoBanner />
       <Kpis items={[{ label: 'Publicaciones', value: pubs.length }, { label: 'Programadas', value: est('programado') }, { label: 'Publicadas', value: est('publicado') }, { label: 'Peticiones por revisar', value: app.pendingCount }]} />
+      <Performance from={from} to={to} />
       <div className="stats-layout">
         <div className="panel card-pad">
           <h3 className="section-title">Publicaciones {bin === 'day' ? 'por día' : 'por mes'}</h3>

@@ -40,6 +40,35 @@ async function refreshTokens() {
   return out
 }
 
+// Recoge las métricas de lo publicado en los últimos 30 días. Un fallo de permisos no desconecta la cuenta.
+export async function collectInsights(budgetMs = 40000, staleHours = 12) {
+  const started = Date.now()
+  const out = []
+  const tokens = new Map()
+  for (const t of await Repo.insightTargets(30, staleHours)) {
+    if (Date.now() - started > budgetMs) break
+    if (!tokens.has(t.social_account_id)) {
+      const acc = await Repo.account(t.social_account_id)
+      tokens.set(t.social_account_id, acc && acc.status === 'connected' && acc.access_token_enc ? Repo.token(acc) : null)
+    }
+    const token = tokens.get(t.social_account_id)
+    if (!token) { await Repo.saveInsights(t.id, {}, 'La cuenta no está conectada.'); continue }
+    try {
+      const m = await Instagram.mediaInsights(t.external_post_id, token, t.tipo)
+      await Repo.saveInsights(t.id, m)
+      out.push({ channel: Number(t.id), ok: true })
+    } catch (e) {
+      if (!(e instanceof MetaException)) throw e
+      const msg = e.isPermissionError() || /permission/i.test(e.message)
+        ? 'Falta el permiso de estadísticas: vuelve a conectar la cuenta en Ajustes → Integraciones.' : e.userMessage()
+      await Repo.saveInsights(t.id, {}, msg)
+      out.push({ channel: Number(t.id), ok: false, error: msg })
+    }
+  }
+  await Repo.setState('insights_last_run', now())
+  return out
+}
+
 export async function handle(req, res) {
   const secret = cfg.get('CRON_SECRET')
   if (!secret) return sendJson(res, { ok: false, error: { code: 'not_configured', message: 'Falta CRON_SECRET.' } }, 503)
@@ -47,7 +76,9 @@ export async function handle(req, res) {
   if (!cryptoBox.safeEqual(secret, given)) return sendJson(res, { ok: false, error: { code: 'unauthorized', message: 'No autorizado.' } }, 401)
   try {
     const job = queryOf(req).job || 'publish'
-    if (job === 'refresh') return sendJson(res, { ok: true, job, results: await refreshTokens() })
+    // El cron diario renueva tokens y recoge estadísticas (Vercel Hobby solo permite crons diarios).
+    if (job === 'refresh') return sendJson(res, { ok: true, job, results: await refreshTokens(), insights: await collectInsights(30000) })
+    if (job === 'insights') return sendJson(res, { ok: true, job, results: await collectInsights(40000) })
     return sendJson(res, { ok: true, job: 'publish', results: await publishDue(req, 40000) })
   } catch (e) {
     console.error('[calendapp cron]', e)

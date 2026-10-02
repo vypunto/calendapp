@@ -50,7 +50,7 @@ try {
 
   R = await post('instagram/connect', { project_id: 'corfu' })
   const url = new URL(R.url); let state = url.searchParams.get('state')
-  ok('URL de autorización oficial con scopes y state', url.host.endsWith('instagram.com') && url.searchParams.get('scope') === 'instagram_business_basic,instagram_business_content_publish' && !!state)
+  ok('URL de autorización oficial con scopes y state', url.host.endsWith('instagram.com') && url.searchParams.get('scope') === 'instagram_business_basic,instagram_business_content_publish,instagram_business_manage_insights' && !!state)
   ok('state inválido rechazado', (await callback('code=corfu&state=badstate')).includes('ig=error'))
   ok('callback conecta la cuenta', (await callback(`code=corfu&state=${state}`)).includes('ig=connected'))
   ok('el state es de un solo uso', (await callback(`code=corfu&state=${state}`)).includes('ig=error'))
@@ -134,6 +134,16 @@ try {
   ok('historial del publicado incluye published', B.events.some((e) => e.channel_id === D1 && e.type === 'published'))
   R = await post('publications/delete', { ref: 'corfu|2026-09-29|img' }); ok('no se puede borrar una publicación ya publicada', R.ok === false && /Meta/.test(R.error.message))
   R = await post('publications/delete', { ref: 'corfu|2026-10-02|tz' }); ok('borrar publicación no publicada', R.ok === true)
+  // Estadísticas de publicaciones
+  ok('se pide el permiso de estadísticas', new URL((await post('instagram/connect', {})).url).searchParams.get('scope').includes('instagram_business_manage_insights'))
+  R = await post('insights/refresh'); const ins = R.insights?.find((i) => i.channel_id === D1)
+  ok('métricas del publicado guardadas', R.ok === true && ins && ins.metrics.reach > 0 && 'saved' in ins.metrics && !ins.error)
+  ok('bootstrap devuelve métricas', (await get('bootstrap')).insights.some((i) => i.channel_id === D1))
+  const calls = mock.state.insightCalls; await post('insights/refresh'); ok('no se repiten métricas recientes', mock.state.insightCalls === calls)
+  await query('UPDATE post_insights SET fetched_at = $1', ['2000-01-01T00:00:00Z']); mock.state.noInsightsPerm = true
+  R = await post('insights/refresh'); const ins2 = R.insights.find((i) => i.channel_id === D1)
+  ok('sin permiso: aviso de reconectar y se conservan las cifras', /reconectar|conectar/i.test(ins2.error || '') && ins2.metrics.reach === ins.metrics.reach)
+  ok('…y la cuenta sigue conectada', (await acct('teatrocorfu7')).status === 'connected'); mock.state.noInsightsPerm = false
   ok('force_reauth en la URL de autorización', new URL((await post('instagram/connect', { force_reauth: true })).url).searchParams.get('force_reauth') === 'true')
   R = await post('accounts/check', { id: ACC }); ok('comprobar cuenta devuelve cuota real de Meta', R.quota?.total === 50)
   R = await post('accounts/refresh', { id: ACC }); ok('renovar token', R.ok === true)

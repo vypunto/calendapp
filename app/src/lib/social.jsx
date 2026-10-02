@@ -58,6 +58,7 @@ export function useSocial({ demo, toast }) {
   const autoRun = useRef(0)
   const [platforms, setPlatforms] = useState(PLATFORMS_FALLBACK)
   const [events, setEvents] = useState([])
+  const [insights, setInsights] = useState({ items: [], lastRun: null })
   const [demoOff, setDemoOff] = useState(() => new Set()) // cuentas demo "desconectadas" (simulación)
   const [busy, setBusy] = useState(false)
   const alive = useRef(true)
@@ -74,6 +75,7 @@ export function useSocial({ demo, toast }) {
       setScheduler(r.scheduler || null)
       if (r.platforms?.length) setPlatforms(r.platforms)
       setEvents((r.events || []).map(normalizeEvent))
+      setInsights({ items: r.insights || [], lastRun: r.insights_last_run || null })
     } catch (e) {
       if (!alive.current) return
       setBackend((b) => ({ ...b, state: e.code === 'unavailable' ? 'offline' : 'online' }))
@@ -116,6 +118,12 @@ export function useSocial({ demo, toast }) {
     if (r.ok) { setBackend((b) => ({ ...b, authenticated: true })); await bootstrap() }
     return true
   }, [call, bootstrap])
+  const refreshInsights = useCallback(async () => {
+    const r = await call('insights/refresh', { method: 'POST', body: {} })
+    setInsights({ items: r.insights || [], lastRun: new Date().toISOString() })
+    const failed = (r.results || []).filter((x) => !x.ok)
+    if (failed.length) toast.error(failed[0].error); else toast.success('Métricas actualizadas')
+  }, [call, toast])
   const changePassword = useCallback(async (current, password) => {
     const r = await call('auth/password', { method: 'POST', body: { current, password } }, { silent: true })
     setBackend((b) => ({ ...b, user: r.user || null }))
@@ -183,7 +191,7 @@ export function useSocial({ demo, toast }) {
   }, [events])
 
   return {
-    backend, platforms, scheduler, runScheduler, serverPubs, serverPubsByRef, eventsByDest, deletePublication, accounts, destinations, destinationsByRef, busy, bootstrap, login, logout, changePassword, connectInstagram, addAccount, disconnectAccount, removeAccount,
+    backend, platforms, scheduler, runScheduler, serverPubs, serverPubsByRef, eventsByDest, deletePublication, accounts, destinations, destinationsByRef, busy, bootstrap, login, logout, changePassword, insights, refreshInsights, connectInstagram, addAccount, disconnectAccount, removeAccount,
     setAccountProject, renewToken, checkAccount, savePublicationDestinations, publishDestination, cancelDestination,
   }
 }

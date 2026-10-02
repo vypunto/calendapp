@@ -10,7 +10,7 @@ import * as Platforms from './platforms.js'
 import * as Publisher from './publisher.js'
 import { now } from './db.js'
 import { MetaException } from './meta-exception.js'
-import { publishDue } from './cron.js'
+import { collectInsights, publishDue } from './cron.js'
 import { HttpError, bodyOf, fail, queryOf, sendError, sendJson } from './http.js'
 
 export const VERSION = '2.0.0'
@@ -38,10 +38,16 @@ async function bootstrap(req, res) {
     ok: true, backend: true, version: VERSION, configured: cfg.flags(), authenticated: authed, user: Auth.user(req),
     projects: await Repo.projects(), platforms: Platforms.all(), accounts: await Repo.accounts(), scheduler: authed ? await Repo.schedulerInfo() : null,
     publications: authed ? await Repo.publications() : [], destinations: authed ? await Repo.channels() : [], events: authed ? await Repo.events() : [],
+    insights: authed ? await Repo.insights() : [], insights_last_run: authed ? await Repo.getState('insights_last_run') : null,
   })
 }
 
 const POST = {
+  // Actualización manual de métricas (las de menos de 1 h se reutilizan para no gastar cuota).
+  async 'insights/refresh'(req, res) {
+    const results = await collectInsights(25000, 1)
+    sendJson(res, { ok: true, results, insights: await Repo.insights() })
+  },
   async 'instagram/connect'(req, res, input) {
     const f = cfg.flags()
     if (!f.meta_app || !f.redirect_uri || !f.crypto) fail('not_configured', 'Faltan la aplicación de Meta, la URL de retorno o APP_KEY en la configuración del servidor.', 503)

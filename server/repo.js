@@ -160,3 +160,22 @@ export async function consumeState(state) {
   const row = await one(query, 'DELETE FROM oauth_states WHERE state = $1 RETURNING *', [state])
   return row
 }
+
+// ── Estadísticas de publicaciones ─────────────────────────────────────────
+// Destinos publicados en los últimos `days` días cuyas métricas tienen más de `staleHours` horas (o no existen).
+export const insightTargets = async (days = 30, staleHours = 12) => (await query(
+  `SELECT c.id, c.social_account_id, c.external_post_id, p.tipo FROM publication_channels c
+     JOIN publications p ON p.id = c.publication_id LEFT JOIN post_insights i ON i.channel_id = c.id
+   WHERE c.status = 'published' AND c.external_post_id IS NOT NULL AND c.published_at >= $1 AND (i.fetched_at IS NULL OR i.fetched_at < $2)
+   ORDER BY i.fetched_at NULLS FIRST, c.published_at DESC`, [isoAfter(-days * 86400), isoAfter(-staleHours * 3600)])).rows
+
+export const saveInsights = (channelId, metrics, error = null) => query(
+  `INSERT INTO post_insights (channel_id, metrics, error, fetched_at) VALUES ($1, $2, $3, $4)
+   ON CONFLICT (channel_id) DO UPDATE SET metrics = CASE WHEN EXCLUDED.error IS NULL THEN EXCLUDED.metrics ELSE post_insights.metrics END, error = EXCLUDED.error, fetched_at = EXCLUDED.fetched_at`,
+  [channelId, JSON.stringify(metrics || {}), error, now()])
+
+export const insights = async () => (await query(
+  `SELECT i.channel_id, i.metrics, i.error, i.fetched_at, c.social_account_id, c.published_at, c.external_url, p.ref, p.title, p.tipo, p.project_id
+     FROM post_insights i JOIN publication_channels c ON c.id = i.channel_id JOIN publications p ON p.id = c.publication_id ORDER BY c.published_at DESC`)).rows
+  .map((r) => ({ channel_id: Number(r.channel_id), social_account_id: Number(r.social_account_id), ref: r.ref, title: r.title, tipo: r.tipo, project_id: r.project_id,
+    published_at: r.published_at, external_url: r.external_url, metrics: jsonOr(r.metrics, {}), error: r.error, fetched_at: r.fetched_at }))

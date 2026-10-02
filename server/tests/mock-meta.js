@@ -57,6 +57,13 @@ export async function startMock(port) {
       return out({ id })
     }
     if (p.match(/^\/v25\.0\/(\d+)\/content_publishing_limit$/)) return out({ data: [{ quota_usage: st.published.length, config: { quota_total: 50, quota_duration: 86400 } }] })
+    if ((m = p.match(/^\/v25\.0\/M(\d+)\/insights$/))) {
+      if (st.noInsightsPerm) return out({ error: { message: '(#10) Application does not have permission for this action', type: 'OAuthException', code: 10 } }, 400)
+      const metric = url.searchParams.get('metric') || ''
+      if (metric.includes('ig_reels_avg_watch_time') && st.rejectReelMetric) return out({ error: { message: '(#100) metric[7] must be one of the following values', type: 'OAuthException', code: 100 } }, 400)
+      st.insightCalls = (st.insightCalls || 0) + 1
+      return out({ data: metric.split(',').map((name, i) => ({ name, period: 'lifetime', values: [{ value: (Number(m[1]) * 100) + i }] })) })
+    }
     if ((m = p.match(/^\/v25\.0\/M(\d+)$/))) return out({ permalink: `https://www.instagram.com/p/mock${m[1]}/`, id: `M${m[1]}` })
     return out({ error: { message: `Unknown mock path ${p}`, type: 'GraphMethodException', code: 100 } }, 404)
   })
